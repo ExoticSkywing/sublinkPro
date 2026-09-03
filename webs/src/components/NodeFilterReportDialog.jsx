@@ -23,7 +23,7 @@ import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { useTheme } from '@mui/material/styles';
+import { alpha, useTheme } from '@mui/material/styles';
 
 import useResolvedColorScheme from 'hooks/useResolvedColorScheme';
 import { getTaskCenterTokens, getTaskDialogPaperSx } from 'components/taskCenterTheme';
@@ -37,6 +37,8 @@ export default function NodeFilterReportDialog({ open, onClose, taskName, summar
   const theme = useTheme();
   const { isDark } = useResolvedColorScheme();
   const tokens = getTaskCenterTokens(theme, isDark);
+  const warningTextColor = isDark ? theme.palette.warning.light : theme.palette.warning.contrastText;
+  const warningBorderColor = isDark ? theme.palette.warning.light : theme.palette.warning.dark;
   const [stage, setStage] = useState('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
@@ -112,6 +114,15 @@ export default function NodeFilterReportDialog({ open, onClose, taskName, summar
               label={t('tasks.filterReport.filtered', { count: filtered })}
               color={filtered > 0 ? 'warning' : 'default'}
               variant="outlined"
+              sx={
+                filtered > 0
+                  ? {
+                      color: warningTextColor,
+                      borderColor: alpha(warningBorderColor, isDark ? 0.5 : 0.55),
+                      '& .MuiChip-label': { color: warningTextColor }
+                    }
+                  : undefined
+              }
             />
             <Chip label={t('tasks.filterReport.retained', { count: retained })} color="success" variant="outlined" />
             <Chip label={t('tasks.filterReport.globalFiltered', { count: globalFiltered })} variant="outlined" />

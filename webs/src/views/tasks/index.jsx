@@ -149,7 +149,7 @@ const StatCard = ({ title, value, icon: Icon, color, theme, tokens }) => (
 
 const StatusChip = ({ status, theme, tokens }) => {
   const { t } = useTranslation();
-  const { label, color } = getTaskStatusMeta(theme, status, t);
+  const { label, color } = getTaskStatusMeta(theme, status, t, tokens.isDark);
   const Icon = TASK_STATUS_ICONS[status] || TASK_STATUS_ICONS.pending;
 
   return (
@@ -536,6 +536,8 @@ export default function TaskList() {
   const theme = useTheme();
   const { isDark } = useResolvedColorScheme();
   const tokens = getTaskCenterTokens(theme, isDark);
+  const warningTextColor = isDark ? theme.palette.warning.light : theme.palette.warning.contrastText;
+  const warningBorderColor = isDark ? theme.palette.warning.light : theme.palette.warning.dark;
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const tableContainerSx = {
@@ -820,7 +822,7 @@ export default function TaskList() {
             title={t('tasks.stats.pending')}
             value={stats.pending || 0}
             icon={ScheduleIcon}
-            color={theme.palette.warning.main}
+            color={warningTextColor}
             theme={theme}
             tokens={tokens}
           />
@@ -1135,10 +1137,10 @@ export default function TaskList() {
                         mb: 1.5,
                         borderTopLeftRadius: 0,
                         borderTopRightRadius: 0,
-                        color: theme.palette.warning.main,
+                        color: warningTextColor,
                         bgcolor: alpha(theme.palette.warning.main, tokens.isDark ? 0.12 : 0.04),
                         border: '1px solid',
-                        borderColor: alpha(theme.palette.warning.main, tokens.isDark ? 0.2 : 0.12),
+                        borderColor: alpha(warningBorderColor, tokens.isDark ? 0.32 : 0.45),
                         '&:hover': {
                           bgcolor: alpha(theme.palette.warning.main, tokens.isDark ? 0.18 : 0.08)
                         }
@@ -1251,7 +1253,13 @@ export default function TaskList() {
                           {filterSummary && (
                             <Button
                               size="small"
-                              sx={{ mt: 0.5, p: 0, minWidth: 0, textTransform: 'none', color: 'warning.main' }}
+                              sx={{
+                                mt: 0.5,
+                                p: 0,
+                                minWidth: 0,
+                                textTransform: 'none',
+                                color: warningTextColor
+                              }}
                               onClick={() => setFilterReportTask({ taskName: task.name, summary: filterSummary })}
                             >
                               {t('tasks.filterReport.view', { count: filterSummary.filtered || 0 })}

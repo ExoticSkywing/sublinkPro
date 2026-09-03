@@ -25,13 +25,14 @@ export const getTaskTypeMeta = (type, t) => withTranslatedLabel(TASK_TYPE_META[t
 
 export const getTaskTriggerMeta = (trigger, t) => withTranslatedLabel(TASK_TRIGGER_META[trigger] || TASK_TRIGGER_META.manual, t);
 
-export const getTaskStatusMeta = (theme, status, t) => {
+export const getTaskStatusMeta = (theme, status, t, isDark = false) => {
+  const warningTextColor = isDark ? theme.palette.warning.light : theme.palette.warning.contrastText;
   const statusMap = {
-    pending: { label: 'Pending', labelKey: 'tasks.status.pending', color: theme.palette.warning.main },
+    pending: { label: 'Pending', labelKey: 'tasks.status.pending', color: warningTextColor },
     running: { label: 'Running', labelKey: 'tasks.status.running', color: theme.palette.primary.main },
     completed: { label: 'Completed', labelKey: 'tasks.status.completed', color: theme.palette.success.main },
-    cancelled: { label: 'Cancelled', labelKey: 'tasks.status.cancelled', color: theme.palette.warning.main },
-    cancelling: { label: 'Stopping', labelKey: 'tasks.status.cancelling', color: theme.palette.warning.main },
+    cancelled: { label: 'Cancelled', labelKey: 'tasks.status.cancelled', color: warningTextColor },
+    cancelling: { label: 'Stopping', labelKey: 'tasks.status.cancelling', color: warningTextColor },
     error: { label: 'Failed', labelKey: 'tasks.status.error', color: theme.palette.error.main }
   };
 

@@ -96,12 +96,13 @@ const TaskProgressItem = ({ task, currentTime, onStopTask, isStopping, onViewFil
   const successColor = theme.palette.success.main;
   const errorColor = theme.palette.error.main;
   const warningColor = theme.palette.warning.main;
+  const warningTextColor = isDark ? theme.palette.warning.light : theme.palette.warning.contrastText;
   const stateAccentColor = isCompleted
     ? successColor
     : isError
       ? errorColor
       : isCancelled || isCancelling
-        ? warningColor
+        ? warningTextColor
         : taskConfig.accentColor;
 
   // Calculate time info
@@ -211,7 +212,7 @@ const TaskProgressItem = ({ task, currentTime, onStopTask, isStopping, onViewFil
               ) : isError ? (
                 <ErrorIcon sx={{ color: errorColor, fontSize: 22 }} />
               ) : isCancelled || isCancelling ? (
-                <CancelIcon sx={{ color: warningColor, fontSize: 22 }} />
+                <CancelIcon sx={{ color: warningTextColor, fontSize: 22 }} />
               ) : (
                 <Icon sx={{ color: taskConfig.accentColor, fontSize: 22 }} />
               )}
@@ -292,9 +293,9 @@ const TaskProgressItem = ({ task, currentTime, onStopTask, isStopping, onViewFil
                         : isError
                           ? errorColor
                           : isCancelled
-                            ? warningColor
+                            ? warningTextColor
                             : isCancelling
-                              ? warningColor
+                              ? warningTextColor
                               : taskConfig.accentColor,
                       whiteSpace: 'nowrap'
                     }}
@@ -319,7 +320,7 @@ const TaskProgressItem = ({ task, currentTime, onStopTask, isStopping, onViewFil
                           sx={{
                             ...getTaskActionButtonSx(theme, tokens, errorColor),
                             p: 0.5,
-                            color: isCancelling ? alpha(warningColor, 0.6) : errorColor,
+                            color: isCancelling ? alpha(warningTextColor, 0.6) : errorColor,
                             minWidth: 0,
                             borderRadius: 1.5
                           }}

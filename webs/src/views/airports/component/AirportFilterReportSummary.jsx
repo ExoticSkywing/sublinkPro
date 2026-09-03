@@ -41,6 +41,8 @@ export default function AirportFilterReportSummary({ airport, sx }) {
   const { isDark } = useResolvedColorScheme();
   const [dialogOpen, setDialogOpen] = useState(false);
   const summary = useMemo(() => parseSummary(airport.nodeFilterSummary), [airport.nodeFilterSummary]);
+  const warningTextColor = isDark ? theme.palette.warning.light : theme.palette.warning.contrastText;
+  const warningBorderColor = isDark ? theme.palette.warning.light : theme.palette.warning.dark;
 
   if (!summary) return null;
 
@@ -74,7 +76,7 @@ export default function AirportFilterReportSummary({ airport, sx }) {
           sx={{ mb: 0.6, rowGap: 0.35 }}
         >
           <Stack direction="row" spacing={0.45} alignItems="center" sx={{ minWidth: 110, flex: '1 1 110px' }}>
-            <FilterAltOutlinedIcon sx={{ fontSize: 14, color: 'warning.main' }} />
+            <FilterAltOutlinedIcon sx={{ fontSize: 14, color: warningTextColor }} />
             <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.primary', whiteSpace: 'nowrap' }}>
               {t('airports.filterReport.title')}
             </Typography>
@@ -98,7 +100,17 @@ export default function AirportFilterReportSummary({ airport, sx }) {
             variant="outlined"
             color={filtered > 0 ? 'warning' : 'default'}
             label={t('airports.filterReport.filtered', { count: filtered })}
-            sx={{ height: 20, fontSize: '0.64rem' }}
+            sx={
+              filtered > 0
+                ? {
+                    height: 20,
+                    fontSize: '0.64rem',
+                    color: warningTextColor,
+                    borderColor: alpha(warningBorderColor, isDark ? 0.5 : 0.55),
+                    '& .MuiChip-label': { color: warningTextColor }
+                  }
+                : { height: 20, fontSize: '0.64rem' }
+            }
           />
           <Chip
             size="small"
@@ -124,7 +136,15 @@ export default function AirportFilterReportSummary({ airport, sx }) {
             event.stopPropagation();
             setDialogOpen(true);
           }}
-          sx={{ minHeight: 26, px: 0.5, fontSize: '0.7rem', fontWeight: 600 }}
+          sx={{
+            minHeight: 26,
+            px: 0.5,
+            fontSize: '0.7rem',
+            fontWeight: 600,
+            color: warningTextColor,
+            '& .MuiButton-startIcon': { color: warningTextColor },
+            '&:hover': { bgcolor: alpha(warningBorderColor, isDark ? 0.14 : 0.08) }
+          }}
         >
           {t('airports.filterReport.view', { count: filtered })}
         </Button>
