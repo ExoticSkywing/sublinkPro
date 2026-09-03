@@ -555,6 +555,8 @@ export default function TaskList() {
   const tableSx = {
     minWidth: 820,
     width: '100%',
+    borderCollapse: 'separate',
+    borderSpacing: '0 6px',
     '& .MuiTableCell-root': {
       px: 1,
       py: 1,
@@ -577,13 +579,34 @@ export default function TaskList() {
   const tableRowSx = {
     cursor: 'pointer',
     transition: 'background-color 0.2s ease',
-    '&:hover': {
-      bgcolor: tokens.rowHoverSurface
+    '& > .MuiTableCell-root': {
+      bgcolor: tokens.sectionSurface,
+      borderTop: '1px solid',
+      borderBottom: '1px solid',
+      borderColor: tokens.softBorder
     },
-    '& td, & .MuiTableCell-root': {
-      borderBottomColor: tokens.softBorder
+    '& > .MuiTableCell-root:first-of-type': {
+      borderLeft: '3px solid',
+      borderTopLeftRadius: 10,
+      borderBottomLeftRadius: 10
+    },
+    '& > .MuiTableCell-root:last-of-type': {
+      borderRight: '1px solid',
+      borderTopRightRadius: 10,
+      borderBottomRightRadius: 10
+    },
+    '&:hover > .MuiTableCell-root': {
+      bgcolor: tokens.rowHoverSurface
     }
   };
+
+  const getTableRowSx = (task) => ({
+    ...tableRowSx,
+    '& > .MuiTableCell-root:first-of-type': {
+      ...tableRowSx['& > .MuiTableCell-root:first-of-type'],
+      borderLeftColor: getTaskTypeMeta(task.type, t).color
+    }
+  });
 
   const [tasks, setTasks] = useState([]);
   const [stats, setStats] = useState({});
@@ -1222,7 +1245,7 @@ export default function TaskList() {
                     const filterSummary = getNodeFilterSummary(task);
 
                     return (
-                      <TableRow key={task.id} hover sx={tableRowSx}>
+                      <TableRow key={task.id} hover sx={getTableRowSx(task)}>
                         <TableCell>
                           <Typography variant="body2" sx={{ fontWeight: 500, color: tokens.primaryText }}>
                             {task.name}
