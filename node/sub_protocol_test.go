@@ -1,6 +1,7 @@
 package node
 
 import (
+	"reflect"
 	"testing"
 
 	"sublink/models"
@@ -159,6 +160,69 @@ func TestApplyAirportNodeFilterDistinguishesHTTPAndHTTPS(t *testing.T) {
 				if proxy.Name != tt.want[i] {
 					t.Fatalf("filtered proxies = %v, want names %v", proxyNames(got), tt.want)
 				}
+			}
+		})
+	}
+}
+
+func TestApplyAirportNodeFilterWithReport(t *testing.T) {
+	proxies := []protocol.Proxy{
+		{Name: "blocked-name", Type: "vmess"},
+		{Name: "allowed-name", Type: "vless"},
+		{Name: "blocked-protocol", Type: "trojan"},
+	}
+
+	airport := &models.Airport{
+		NodeNameBlacklist: `[{
+			"matchMode":"text",
+			"pattern":"blocked-name",
+			"enabled":true
+		}]`,
+		ProtocolBlacklist: "trojan",
+	}
+
+	filtered, report := applyAirportNodeFilterWithReport(airport, proxies, "airport")
+	if got := proxyNames(filtered); !reflect.DeepEqual(got, []string{"allowed-name"}) {
+		t.Fatalf("filtered proxies = %v, want [allowed-name]", got)
+	}
+	if len(report) != 2 {
+		t.Fatalf("report length = %d, want 2", len(report))
+	}
+	if report[0].Name != "blocked-name" || report[0].Stage != "airport" || report[0].Reason != "name_blacklist" {
+		t.Fatalf("first report item = %+v, want airport/name_blacklist", report[0])
+	}
+	if report[1].Name != "blocked-protocol" || report[1].Protocol != "trojan" || report[1].Reason != "protocol_blacklist" {
+		t.Fatalf("second report item = %+v, want trojan/protocol_blacklist", report[1])
+	}
+
+	tests := []struct {
+		name       string
+		airport    models.Airport
+		proxy      protocol.Proxy
+		wantReason string
+	}{
+		{
+			name:       "name whitelist",
+			airport:    models.Airport{NodeNameWhitelist: `[{"matchMode":"text","pattern":"allowed","enabled":true}]`},
+			proxy:      protocol.Proxy{Name: "outside-name", Type: "vless"},
+			wantReason: "name_whitelist",
+		},
+		{
+			name:       "protocol whitelist",
+			airport:    models.Airport{ProtocolWhitelist: "vmess"},
+			proxy:      protocol.Proxy{Name: "wrong-protocol", Type: "vless"},
+			wantReason: "protocol_whitelist",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			filtered, details := applyAirportNodeFilterWithReport(&tt.airport, []protocol.Proxy{tt.proxy}, "global")
+			if len(filtered) != 0 || len(details) != 1 {
+				t.Fatalf("filtered=%v details=%v, want one filtered node", filtered, details)
+			}
+			if details[0].Reason != tt.wantReason || details[0].Stage != "global" {
+				t.Fatalf("detail=%+v, want reason=%s stage=global", details[0], tt.wantReason)
 			}
 		})
 	}

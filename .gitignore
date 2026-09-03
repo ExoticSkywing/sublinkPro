@@ -3,6 +3,7 @@
 db
 logs
 out
+tmp
 sublink_amd64
 sublink_arm64
 sublink.exe

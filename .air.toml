@@ -1,0 +1,16 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./tmp/sublinkpro ."
+  bin = "./tmp/sublinkpro"
+  delay = 500
+  exclude_dir = ["tmp", "webs", "db", "logs", "static", "template", "vendor"]
+  exclude_regex = ["_test.go"]
+  include_ext = ["go"]
+  stop_on_error = true
+  send_interrupt = true
+  kill_delay = 500
+
+[log]
+  time = true

@@ -37,6 +37,7 @@ import { formatDateTime, formatBytes, formatExpireTime, getUsageColor } from '..
 // local components
 import AirportNodeStatsCard from './AirportNodeStatsCard';
 import AirportLogo from './AirportLogo';
+import AirportFilterReportSummary from './AirportFilterReportSummary';
 
 /**
  * 机场列表卡片网格组件（桌面端）
@@ -468,6 +469,8 @@ export default function AirportTable({
                     sx={{ height: 20, fontSize: '0.68rem' }}
                   />
                 </Stack>
+
+                <AirportFilterReportSummary airport={airport} sx={{ mb: 1.25 }} />
 
                 {/* 运行时间 */}
                 <Box

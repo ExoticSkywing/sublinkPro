@@ -61,6 +61,7 @@ import { useTaskProgress } from 'contexts/TaskProgressContext';
 import useResolvedColorScheme from 'hooks/useResolvedColorScheme';
 
 import { extractUnlockSummaryFromTaskResult, formatUnlockProviderLabel } from 'views/nodes/utils';
+import NodeFilterReportDialog from 'components/NodeFilterReportDialog';
 import { formatDateTime } from 'i18n/locales';
 
 import {
@@ -285,6 +286,12 @@ const getMigrationWarnings = (task) => {
   if (task?.type !== 'db_migration') return [];
   const parsedResult = parseTaskResult(task.result);
   return Array.isArray(parsedResult?.warnings) ? parsedResult.warnings : [];
+};
+
+const getNodeFilterSummary = (task) => {
+  if (task?.type !== 'sub_update' && task?.taskType !== 'sub_update') return null;
+  const result = parseTaskResult(task.result);
+  return result?.filterSummary && typeof result.filterSummary === 'object' ? result.filterSummary : null;
 };
 
 const getTaskUnlockSummary = (task, t) => {
@@ -592,6 +599,7 @@ export default function TaskList() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [warningsDialogOpen, setWarningsDialogOpen] = useState(false);
   const [warningsTask, setWarningsTask] = useState(null);
+  const [filterReportTask, setFilterReportTask] = useState(null);
 
   // Manage realtime progress expanded/collapsed state with localStorage persistence
   const [isProgressExpanded, setIsProgressExpanded] = useState(() => {
@@ -1089,57 +1097,83 @@ export default function TaskList() {
               <Typography sx={{ color: tokens.secondaryText }}>{t('tasks.empty')}</Typography>
             </Box>
           ) : (
-            tasks.map((task) => (
-              <Box key={task.id}>
-                <TaskMobileCard
-                  task={task}
-                  onStop={handleStopTask}
-                  canStop={task.status === 'running' && (task.type === 'speed_test' || task.type === 'sub_update')}
-                  theme={theme}
-                  tokens={tokens}
-                />
-                {task.type === 'db_migration' && getMigrationWarnings(task).length > 0 && (
-                  <Button
-                    size="small"
-                    fullWidth
-                    startIcon={<WarningAmberIcon />}
-                    sx={{
-                      ...migrationWarningButtonSx,
-                      mt: -1.5,
-                      mb: 1.5,
-                      borderTopLeftRadius: 0,
-                      borderTopRightRadius: 0
-                    }}
-                    onClick={() => handleOpenMigrationWarnings(task)}
-                  >
-                    {t('tasks.viewMigrationWarnings', { count: getMigrationWarnings(task).length })}
-                  </Button>
-                )}
-                {/* Add a invisible click handler or a button to open details if it has traffic */}
-                {task.type === 'speed_test' && task.result && task.status === 'completed' && (
-                  <Button
-                    size="small"
-                    fullWidth
-                    sx={{
-                      mt: -1.5,
-                      mb: 1.5,
-                      borderTopLeftRadius: 0,
-                      borderTopRightRadius: 0,
-                      color: theme.palette.primary.main,
-                      bgcolor: alpha(theme.palette.primary.main, tokens.isDark ? 0.12 : 0.04),
-                      border: '1px solid',
-                      borderColor: alpha(theme.palette.primary.main, tokens.isDark ? 0.2 : 0.12),
-                      '&:hover': {
-                        bgcolor: alpha(theme.palette.primary.main, tokens.isDark ? 0.18 : 0.08)
-                      }
-                    }}
-                    onClick={() => handleOpenTrafficStats(task)}
-                  >
-                    {t('tasks.actions.viewTrafficDetails')}
-                  </Button>
-                )}
-              </Box>
-            ))
+            tasks.map((task) => {
+              const filterSummary = getNodeFilterSummary(task);
+
+              return (
+                <Box key={task.id}>
+                  <TaskMobileCard
+                    task={task}
+                    onStop={handleStopTask}
+                    canStop={task.status === 'running' && (task.type === 'speed_test' || task.type === 'sub_update')}
+                    theme={theme}
+                    tokens={tokens}
+                  />
+                  {task.type === 'db_migration' && getMigrationWarnings(task).length > 0 && (
+                    <Button
+                      size="small"
+                      fullWidth
+                      startIcon={<WarningAmberIcon />}
+                      sx={{
+                        ...migrationWarningButtonSx,
+                        mt: -1.5,
+                        mb: 1.5,
+                        borderTopLeftRadius: 0,
+                        borderTopRightRadius: 0
+                      }}
+                      onClick={() => handleOpenMigrationWarnings(task)}
+                    >
+                      {t('tasks.viewMigrationWarnings', { count: getMigrationWarnings(task).length })}
+                    </Button>
+                  )}
+                  {filterSummary && (
+                    <Button
+                      size="small"
+                      fullWidth
+                      sx={{
+                        mt: -1.5,
+                        mb: 1.5,
+                        borderTopLeftRadius: 0,
+                        borderTopRightRadius: 0,
+                        color: theme.palette.warning.main,
+                        bgcolor: alpha(theme.palette.warning.main, tokens.isDark ? 0.12 : 0.04),
+                        border: '1px solid',
+                        borderColor: alpha(theme.palette.warning.main, tokens.isDark ? 0.2 : 0.12),
+                        '&:hover': {
+                          bgcolor: alpha(theme.palette.warning.main, tokens.isDark ? 0.18 : 0.08)
+                        }
+                      }}
+                      onClick={() => setFilterReportTask({ taskName: task.name, summary: filterSummary })}
+                    >
+                      {t('tasks.filterReport.view', { count: filterSummary.filtered || 0 })}
+                    </Button>
+                  )}
+                  {/* Add a invisible click handler or a button to open details if it has traffic */}
+                  {task.type === 'speed_test' && task.result && task.status === 'completed' && (
+                    <Button
+                      size="small"
+                      fullWidth
+                      sx={{
+                        mt: -1.5,
+                        mb: 1.5,
+                        borderTopLeftRadius: 0,
+                        borderTopRightRadius: 0,
+                        color: theme.palette.primary.main,
+                        bgcolor: alpha(theme.palette.primary.main, tokens.isDark ? 0.12 : 0.04),
+                        border: '1px solid',
+                        borderColor: alpha(theme.palette.primary.main, tokens.isDark ? 0.2 : 0.12),
+                        '&:hover': {
+                          bgcolor: alpha(theme.palette.primary.main, tokens.isDark ? 0.18 : 0.08)
+                        }
+                      }}
+                      onClick={() => handleOpenTrafficStats(task)}
+                    >
+                      {t('tasks.actions.viewTrafficDetails')}
+                    </Button>
+                  )}
+                </Box>
+              );
+            })
           )}
           <TablePagination
             component="div"
@@ -1183,6 +1217,7 @@ export default function TaskList() {
                 ) : (
                   tasks.map((task) => {
                     const taskUnlockSummary = getTaskUnlockSummary(task, t);
+                    const filterSummary = getNodeFilterSummary(task);
 
                     return (
                       <TableRow key={task.id} hover sx={tableRowSx}>
@@ -1212,6 +1247,15 @@ export default function TaskList() {
                                 {taskUnlockSummary.text}
                               </Typography>
                             </Tooltip>
+                          )}
+                          {filterSummary && (
+                            <Button
+                              size="small"
+                              sx={{ mt: 0.5, p: 0, minWidth: 0, textTransform: 'none', color: 'warning.main' }}
+                              onClick={() => setFilterReportTask({ taskName: task.name, summary: filterSummary })}
+                            >
+                              {t('tasks.filterReport.view', { count: filterSummary.filtered || 0 })}
+                            </Button>
                           )}
                           {task.type === 'db_migration' && getMigrationWarnings(task).length > 0 && (
                             <Button
@@ -1344,6 +1388,13 @@ export default function TaskList() {
 
       {/* Traffic Stats Dialog */}
       <TrafficStatsDialog open={trafficDialogOpen} onClose={() => setTrafficDialogOpen(false)} task={selectedTask} />
+
+      <NodeFilterReportDialog
+        open={Boolean(filterReportTask)}
+        onClose={() => setFilterReportTask(null)}
+        taskName={filterReportTask?.taskName}
+        summary={filterReportTask?.summary}
+      />
 
       <Dialog
         open={warningsDialogOpen}

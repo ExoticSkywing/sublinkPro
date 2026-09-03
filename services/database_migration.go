@@ -1127,7 +1127,13 @@ func importAirports(state *databaseMigrationState) error {
 	airports := make([]models.Airport, 0)
 
 	if state.source.Migrator().HasTable(&models.Airport{}) {
-		if err := state.source.Find(&airports).Error; err != nil {
+		airportQuery := state.source.Model(&models.Airport{})
+		// 旧版备份可能没有最近一次过滤报告列；显式选择已有列，避免 GORM
+		// 根据当前模型生成对不存在 node_filter_summary 的查询。
+		if !state.source.Migrator().HasColumn(&models.Airport{}, "NodeFilterSummary") {
+			airportQuery = state.source.Table((&models.Airport{}).TableName()).Select("*")
+		}
+		if err := airportQuery.Find(&airports).Error; err != nil {
 			return fmt.Errorf("读取源机场失败: %w", err)
 		}
 	}

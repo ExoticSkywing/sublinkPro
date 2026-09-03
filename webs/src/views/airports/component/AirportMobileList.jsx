@@ -42,6 +42,7 @@ import { getReadableTextTokens, getSurfaceTokens } from 'themes/surfaceTokens';
 // local components
 import AirportNodeStatsCard from './AirportNodeStatsCard';
 import AirportLogo from './AirportLogo';
+import AirportFilterReportSummary from './AirportFilterReportSummary';
 
 /**
  * 机场移动端列表组件
@@ -430,6 +431,8 @@ export default function AirportMobileList({
                   </Typography>
                   <AirportNodeStatsCard nodeStats={airport.nodeStats} nodeCount={airport.nodeCount || 0} />
                 </Box>
+
+                <AirportFilterReportSummary airport={airport} sx={{ mb: 2 }} />
 
                 {/* 更新后检测 */}
                 {airport.updateAfterDetect && (

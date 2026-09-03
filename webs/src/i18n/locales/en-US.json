@@ -430,10 +430,20 @@
         "runTime": "Run time",
         "usage": "Usage",
         "speedTest": "Speed test",
+        "filterReport": "Filter result",
         "actions": "Actions"
       },
       "lastRunCompact": "Last: {{time}}",
       "nextRunCompact": "Next: {{time}}"
+    },
+    "filterReport": {
+      "title": "Latest filtering",
+      "lastRun": "Last pull: {{time}}",
+      "total": "Source {{count}}",
+      "filtered": "Filtered {{count}}",
+      "retained": "Retained {{count}}",
+      "breakdown": "Global {{global}} / airport {{airport}}",
+      "view": "View filtered nodes ({{count}})"
     },
     "dedup": {
       "title": "Node import deduplication",
@@ -3483,6 +3493,39 @@
       "stopping": "Stopping...",
       "viewTrafficDetails": "View traffic details"
     },
+    "filterReport": {
+      "title": "Node filter details",
+      "taskName": "Task: {{name}}",
+      "view": "View filtered nodes ({{count}})",
+      "total": "Source nodes {{count}}",
+      "filtered": "Filtered {{count}}",
+      "retained": "Retained {{count}}",
+      "globalFiltered": "Global rules {{count}}",
+      "airportFiltered": "Airport rules {{count}}",
+      "none": "No nodes were filtered in this update.",
+      "noMatches": "No nodes match the current filters.",
+      "search": "Search",
+      "searchPlaceholder": "Search by node name, protocol, or reason",
+      "stageLabel": "Filter stage",
+      "allStages": "All stages",
+      "rowsPerPage": "Rows per page",
+      "columns": {
+        "name": "Node name",
+        "stage": "Stage",
+        "reason": "Reason",
+        "protocol": "Protocol"
+      },
+      "stage": {
+        "global": "Global rules",
+        "airport": "Airport rules"
+      },
+      "reason": {
+        "name_blacklist": "Name blacklist",
+        "name_whitelist": "Not in name whitelist",
+        "protocol_blacklist": "Protocol blacklist",
+        "protocol_whitelist": "Not in protocol whitelist"
+      }
+    },
     "phase": {
       "latency": "Latency",
       "speed": "Speed"
@@ -3503,6 +3546,7 @@
       "added": "{{count}} added",
       "exists": "{{count}} existing",
       "deleted": "{{count}} deleted",
+      "filtered": "{{count}} filtered",
       "matchedNodes": "{{matched}}/{{total}} nodes matched",
       "importedKinds": "{{count}} item types imported",
       "warnings": "{{count}} warnings"

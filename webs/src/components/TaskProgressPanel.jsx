@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme, alpha } from '@mui/material/styles';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
@@ -26,6 +27,7 @@ import { useTaskProgress } from 'contexts/TaskProgressContext';
 import useResolvedColorScheme from 'hooks/useResolvedColorScheme';
 
 import { getUnlockTaskResultText } from 'views/nodes/utils';
+import NodeFilterReportDialog from 'components/NodeFilterReportDialog';
 import {
   getTaskActionButtonSx,
   getTaskCardSx,
@@ -52,7 +54,7 @@ const formatTime = (ms, t) => {
 
 // ==============================|| TASK PROGRESS ITEM ||============================== //
 
-const TaskProgressItem = ({ task, currentTime, onStopTask, isStopping }) => {
+const TaskProgressItem = ({ task, currentTime, onStopTask, isStopping, onViewFilterReport }) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { isDark } = useResolvedColorScheme();
@@ -90,6 +92,7 @@ const TaskProgressItem = ({ task, currentTime, onStopTask, isStopping }) => {
   const isCancelled = task.status === 'cancelled';
   const isCancelling = task.status === 'cancelling' || isStopping;
   const isActive = !isCompleted && !isError && !isCancelled;
+  const filterSummary = task.taskType === 'sub_update' && task.result?.filterSummary ? task.result.filterSummary : null;
   const successColor = theme.palette.success.main;
   const errorColor = theme.palette.error.main;
   const warningColor = theme.palette.warning.main;
@@ -143,11 +146,13 @@ const TaskProgressItem = ({ task, currentTime, onStopTask, isStopping }) => {
     }
 
     if (task.taskType === 'sub_update') {
-      const { added, exists, deleted } = task.result;
+      const { added, skipped, exists, deleted, filterSummary } = task.result;
+      const existing = skipped ?? exists;
       const parts = [];
       if (added !== undefined) parts.push(t('tasks.result.added', { count: added }));
-      if (exists !== undefined) parts.push(t('tasks.result.exists', { count: exists }));
+      if (existing !== undefined) parts.push(t('tasks.result.exists', { count: existing }));
       if (deleted !== undefined) parts.push(t('tasks.result.deleted', { count: deleted }));
+      if (filterSummary?.filtered !== undefined) parts.push(t('tasks.result.filtered', { count: filterSummary.filtered }));
       return parts.length > 0 ? parts.join(' · ') : null;
     }
 
@@ -405,18 +410,42 @@ const TaskProgressItem = ({ task, currentTime, onStopTask, isStopping }) => {
                   )}
                 </Box>
 
-                {resultDisplay && (
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: secondaryTextColor,
-                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                      fontWeight: 500,
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {resultDisplay}
-                  </Typography>
+                {(resultDisplay || filterSummary) && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {resultDisplay && (
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: secondaryTextColor,
+                          fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                          fontWeight: 500,
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {resultDisplay}
+                      </Typography>
+                    )}
+                    {filterSummary && onViewFilterReport && (
+                      <Button
+                        size="small"
+                        variant="text"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onViewFilterReport({ taskName: task.taskName, summary: filterSummary });
+                        }}
+                        sx={{
+                          minWidth: 0,
+                          minHeight: 24,
+                          px: 0.5,
+                          py: 0,
+                          fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                          textTransform: 'none'
+                        }}
+                      >
+                        {t('tasks.filterReport.view', { count: filterSummary.filtered || 0 })}
+                      </Button>
+                    )}
+                  </Box>
                 )}
               </Box>
             </Box>
@@ -437,6 +466,7 @@ const TaskProgressPanel = () => {
   const { primaryText: primaryTextColor, secondaryText: secondaryTextColor } = tokens;
   const { taskList, hasActiveTasks, stopTask, isTaskStopping } = useTaskProgress();
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [filterReport, setFilterReport] = useState(null);
 
   // Manage expanded/collapsed state with localStorage persistence
   const [isExpanded, setIsExpanded] = useState(() => {
@@ -639,11 +669,18 @@ const TaskProgressPanel = () => {
                   currentTime={currentTime}
                   onStopTask={stopTask}
                   isStopping={isTaskStopping(task.taskId)}
+                  onViewFilterReport={setFilterReport}
                 />
               ))}
             </Box>
           </Collapse>
         </CardContent>
+        <NodeFilterReportDialog
+          open={Boolean(filterReport)}
+          onClose={() => setFilterReport(null)}
+          taskName={filterReport?.taskName}
+          summary={filterReport?.summary}
+        />
       </Card>
     </Collapse>
   );

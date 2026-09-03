@@ -96,6 +96,18 @@ Notes:
 - Filtered nodes are not stored in the database.
 - Global rules can be accessed from the airport management page via the “Global Rules” button in the toolbar.
 
+### Review node filter reports
+
+After each subscription fetch task completes, the task progress panel and Task Center history provide a “View filtered nodes” action. The report includes:
+
+- The original node count returned by the upstream subscription.
+- Counts filtered by global rules and by the current airport rules, plus the combined filtered and retained counts.
+- Every filtered node's original name, protocol, filter stage, and reason, with stage and keyword filters.
+
+The report counts stages in this order: global filtering → airport filtering. A node removed by a global rule is not counted again in the airport stage. “Retained” is the count after both filtering stages and does not include nodes removed by later deduplication; names in the detail table are the upstream names before renaming.
+
+Reports are retained in the airport record. The airport management page always shows the latest successful summary and exposes the detail view directly from the airport card, table, and mobile card. The same report is also stored in the subscription update task result for historical pulls. A successful pull replaces the airport's latest report; a failed pull keeps the previous successful report. Clearing task history removes only the historical task report and does not affect the latest report shown on the airport page. Deleting an airport also deletes its saved report with the airport record.
+
 ### Node processing: unique names
 
 In “Node Processing, applied during fetch” inside the airport edit dialog, you can configure unique node names:

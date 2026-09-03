@@ -40,6 +40,7 @@ import { withAlpha } from 'utils/colorUtils';
 // local components
 import AirportNodeStatsCard from './AirportNodeStatsCard';
 import AirportLogo from './AirportLogo';
+import AirportFilterReportSummary from './AirportFilterReportSummary';
 
 /**
  * 机场列表视图组件（桌面端表格模式）
@@ -375,6 +376,7 @@ export default function AirportListView({
               <TableCell sx={{ width: '14%', minWidth: 158 }}>{t('airports.table.columns.runTime')}</TableCell>
               <TableCell sx={{ width: '17%', minWidth: 145 }}>{t('airports.table.columns.usage')}</TableCell>
               <TableCell sx={{ width: '10%', minWidth: 100 }}>{t('airports.table.columns.speedTest')}</TableCell>
+              <TableCell sx={{ width: '15%', minWidth: 170 }}>{t('airports.table.columns.filterReport')}</TableCell>
               <TableCell sx={{ width: '8%', minWidth: 90 }} align="center">
                 {t('airports.list.updateAfterDetect.title')}
               </TableCell>
@@ -477,6 +479,11 @@ export default function AirportListView({
 
                   {/* 测速 */}
                   <TableCell>{renderSpeedCompact(airport.nodeStats, airport.nodeCount || 0)}</TableCell>
+
+                  {/* 过滤摘要 */}
+                  <TableCell>
+                    <AirportFilterReportSummary airport={airport} />
+                  </TableCell>
 
                   {/* 更新检测 */}
                   <TableCell align="center">

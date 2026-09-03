@@ -98,6 +98,29 @@ go run main.go
 
 The backend listens on `:8000` by default.
 
+### Use Docker Compose development mode (recommended)
+
+To avoid rebuilding the full production image after every source change, use the development Compose file included in the repository:
+
+```bash
+docker compose -f docker-compose.dev.yml up
+```
+
+It starts two development services:
+
+- Backend at `http://localhost:8000`: Go source is mounted into the container, and Air watches `.go` files and restarts the backend process. Air is installed into a Docker volume on the first run and reused afterwards.
+- Frontend at `http://localhost:3000`: Vite dev server with hot module replacement (HMR); frontend `/api` requests are proxied to the backend.
+
+Changes under `webs/src` refresh the browser immediately. Go changes trigger a quick rebuild and backend restart. The database, logs, and templates continue to use the project `db/`, `logs/`, and `template/` directories. They are shared with the production Compose file when both commands use the same project directory.
+
+Stop the development environment:
+
+```bash
+docker compose -f docker-compose.dev.yml down
+```
+
+If Docker Desktop or a network filesystem does not report file changes, enable polling in the Vite configuration; local Linux directories normally do not need polling.
+
 ### 3. Frontend development
 
 Run under `webs/`:

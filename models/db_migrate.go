@@ -364,6 +364,18 @@ func RunMigrations() error {
 		utils.Error("执行迁移 0037_normalize_host_hostnames 失败: %v", err)
 	}
 
+	// 0038_add_airport_node_filter_summary - 保存机场最近一次成功拉取的过滤报告
+	if err := database.RunCustomMigration("0038_add_airport_node_filter_summary", func() error {
+		if !db.Migrator().HasColumn(&Airport{}, "NodeFilterSummary") {
+			if err := db.Migrator().AddColumn(&Airport{}, "NodeFilterSummary"); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		utils.Error("执行迁移 0038_add_airport_node_filter_summary 失败: %v", err)
+	}
+
 	if err := database.RunCustomMigration("0024_migrate_legacy_webhook_settings", func() error {
 		legacyURL, _ := GetSetting("webhook_url")
 		legacyMethod, _ := GetSetting("webhook_method")

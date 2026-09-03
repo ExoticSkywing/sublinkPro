@@ -46,6 +46,28 @@ func (n *NoOpTaskReporter) ReportProgress(current int, currentItem string, resul
 func (n *NoOpTaskReporter) ReportComplete(message string, result any)                  {}
 func (n *NoOpTaskReporter) ReportFail(errMsg string)                                   {}
 
+// NodeFilterReportItem describes one node removed by a global or airport-level
+// filtering rule during subscription import.
+type NodeFilterReportItem struct {
+	Name     string `json:"name"`
+	Protocol string `json:"protocol,omitempty"`
+	Stage    string `json:"stage"`
+	Reason   string `json:"reason"`
+}
+
+// NodeFilterSummary contains the source node count and the filtering result
+// for one subscription update. It is included in the task result and persisted
+// on the airport record so the latest successful report remains reviewable.
+type NodeFilterSummary struct {
+	Total           int                    `json:"total"`
+	Retained        int                    `json:"retained"`
+	Filtered        int                    `json:"filtered"`
+	GlobalFiltered  int                    `json:"globalFiltered"`
+	AirportFiltered int                    `json:"airportFiltered"`
+	GeneratedAt     time.Time              `json:"generatedAt"`
+	Nodes           []NodeFilterReportItem `json:"nodes"`
+}
+
 const (
 	// providerResponseSizeLimit 限制单个 provider 响应体大小，兼顾大型机场节点列表与内存上界。
 	providerResponseSizeLimit int64 = 16 << 20
@@ -703,6 +725,11 @@ func scheduleClashToNodeLinks(ctx context.Context, id int, proxys []protocol.Pro
 		reporter = &NoOpTaskReporter{}
 	}
 
+	filterSummary := NodeFilterSummary{
+		Total: len(proxys),
+		Nodes: make([]NodeFilterReportItem, 0),
+	}
+
 	addSuccessCount := 0
 	updateCount := 0 // 名称/链接已更新的节点数量
 	skipCount := 0   // 已存在的节点数量（跳过）
@@ -743,7 +770,10 @@ func scheduleClashToNodeLinks(ctx context.Context, id int, proxys []protocol.Pro
 	if globalWhitelist != "" || globalBlacklist != "" ||
 		globalProtocolWhitelist != "" || globalProtocolBlacklist != "" {
 		originalCount := len(proxys)
-		proxys = applyAirportNodeFilter(globalAirport, proxys)
+		var filteredNodes []NodeFilterReportItem
+		proxys, filteredNodes = applyAirportNodeFilterWithReport(globalAirport, proxys, "global")
+		filterSummary.GlobalFiltered += len(filteredNodes)
+		filterSummary.Nodes = append(filterSummary.Nodes, filteredNodes...)
 		if len(proxys) < originalCount {
 			utils.Info("🌐全局过滤后节点数量：%d（原始：%d，过滤掉：%d）",
 				len(proxys), originalCount, originalCount-len(proxys))
@@ -753,10 +783,20 @@ func scheduleClashToNodeLinks(ctx context.Context, id int, proxys []protocol.Pro
 	// 4. 再应用机场特定过滤规则
 	if airport != nil {
 		originalCount := len(proxys)
-		proxys = applyAirportNodeFilter(airport, proxys)
+		var filteredNodes []NodeFilterReportItem
+		proxys, filteredNodes = applyAirportNodeFilterWithReport(airport, proxys, "airport")
+		filterSummary.AirportFiltered += len(filteredNodes)
+		filterSummary.Nodes = append(filterSummary.Nodes, filteredNodes...)
 		if len(proxys) < originalCount {
 			utils.Info("📦机场【%s】过滤后节点数量：%d（原始：%d，过滤掉：%d）", subName, len(proxys), originalCount, originalCount-len(proxys))
 		}
+	}
+
+	// 过滤摘要只统计全局/机场过滤规则，不将后续去重算作“被过滤”。
+	filterSummary.Filtered = len(filterSummary.Nodes)
+	filterSummary.Retained = filterSummary.Total - filterSummary.Filtered
+
+	if airport != nil {
 		// 应用高级去重规则
 		beforeDedup := len(proxys)
 		proxys = applyAirportDeduplication(airport, proxys)
@@ -1136,7 +1176,7 @@ func scheduleClashToNodeLinks(ctx context.Context, id int, proxys []protocol.Pro
 		}
 	}
 
-	utils.Info("✅订阅【%s】节点同步完成，总节点【%d】个，成功处理【%d】个，新增节点【%d】个，更新节点【%d】个，已存在节点【%d】个，删除失效【%d】个", subName, len(proxys), addSuccessCount+skipCount, addSuccessCount, actualUpdateCount, skipCount, deleteCount)
+	utils.Info("✅订阅【%s】节点同步完成，原始节点【%d】个，过滤【%d】个（全局【%d】/机场【%d】），保留【%d】个，成功处理【%d】个，新增节点【%d】个，更新节点【%d】个，已存在节点【%d】个，删除失效【%d】个", subName, filterSummary.Total, filterSummary.Filtered, filterSummary.GlobalFiltered, filterSummary.AirportFiltered, filterSummary.Retained, addSuccessCount+skipCount, addSuccessCount, actualUpdateCount, skipCount, deleteCount)
 
 	// 收集变更和新增的节点ID（用于更新后仅检测变化节点的功能）
 	changedNodeIDs := make([]int, 0, addSuccessCount+actualUpdateCount)
@@ -1159,18 +1199,26 @@ func scheduleClashToNodeLinks(ctx context.Context, id int, proxys []protocol.Pro
 		return nil, err
 	}
 	airport.SuccessCount = addSuccessCount + skipCount
-	// 当前时间
-	airport.LastRunTime = new(time.Now())
+	completedAt := time.Now()
+	airport.LastRunTime = &completedAt
+	filterSummary.GeneratedAt = completedAt
+	// 仅在订阅成功后保存最近一次过滤报告；拉取失败时保留上一次成功结果。
+	filterSummaryJSON, err := json.Marshal(filterSummary)
+	if err != nil {
+		return nil, fmt.Errorf("序列化节点过滤报告失败: %w", err)
+	}
+	airport.NodeFilterSummary = string(filterSummaryJSON)
 	err1 := airport.Update()
 	if err1 != nil {
 		return nil, err1
 	}
 	// 通过 reporter 报告任务完成
-	reporter.ReportComplete(fmt.Sprintf("订阅更新完成 (新增: %d, 更新: %d, 已存在: %d, 删除: %d)", addSuccessCount, actualUpdateCount, skipCount, deleteCount), map[string]any{
-		"added":   addSuccessCount,
-		"updated": actualUpdateCount,
-		"skipped": skipCount,
-		"deleted": deleteCount,
+	reporter.ReportComplete(fmt.Sprintf("订阅更新完成 (原始: %d, 过滤: %d, 保留: %d, 新增: %d, 更新: %d, 已存在: %d, 删除: %d)", filterSummary.Total, filterSummary.Filtered, filterSummary.Retained, addSuccessCount, actualUpdateCount, skipCount, deleteCount), map[string]any{
+		"added":         addSuccessCount,
+		"updated":       actualUpdateCount,
+		"skipped":       skipCount,
+		"deleted":       deleteCount,
+		"filterSummary": filterSummary,
 	})
 
 	// 触发webhook的完成事件
@@ -1204,10 +1252,11 @@ func scheduleClashToNodeLinks(ctx context.Context, id int, proxys []protocol.Pro
 	if len(usageData) > 0 {
 		nData["usage"] = usageData
 	}
+	nData["filterSummary"] = filterSummary
 
 	notifications.Publish("subscription.sync_succeeded", notifications.Payload{
 		Title:   "订阅更新完成",
-		Message: fmt.Sprintf("✅订阅【%s】节点同步完成，耗时 %s，总节点【%d】个，成功处理【%d】个，新增节点【%d】个，更新节点【%d】个，已存在节点【%d】个，删除失效【%d】个%s", subName, durationStr, len(proxys), addSuccessCount+skipCount, addSuccessCount, actualUpdateCount, skipCount, deleteCount, usageText),
+		Message: fmt.Sprintf("✅订阅【%s】节点同步完成，耗时 %s，原始节点【%d】个，过滤【%d】个（全局【%d】/机场【%d】），保留【%d】个，实际处理【%d】个，成功处理【%d】个，新增节点【%d】个，更新节点【%d】个，已存在节点【%d】个，删除失效【%d】个%s", subName, durationStr, filterSummary.Total, filterSummary.Filtered, filterSummary.GlobalFiltered, filterSummary.AirportFiltered, filterSummary.Retained, len(proxys), addSuccessCount+skipCount, addSuccessCount, actualUpdateCount, skipCount, deleteCount, usageText),
 		Data:    nData,
 	})
 	return changedNodeIDs, nil
@@ -1228,8 +1277,17 @@ func formatDurationSub(d time.Duration) string {
 // applyAirportNodeFilter 应用机场节点过滤规则
 // 根据机场配置的白名单/黑名单规则过滤代理节点
 func applyAirportNodeFilter(airport *models.Airport, proxys []protocol.Proxy) []protocol.Proxy {
+	filtered, _ := applyAirportNodeFilterWithReport(airport, proxys, "")
+	return filtered
+}
+
+// applyAirportNodeFilterWithReport applies the same filtering semantics as
+// applyAirportNodeFilter while returning details for every removed node.
+// stage is either "global" or "airport" when the caller wants to expose the
+// source of the filtering decision in the subscription task result.
+func applyAirportNodeFilterWithReport(airport *models.Airport, proxys []protocol.Proxy, stage string) ([]protocol.Proxy, []NodeFilterReportItem) {
 	if airport == nil {
-		return proxys
+		return proxys, nil
 	}
 
 	hasNameWhitelist := utils.HasActiveNodeNameFilter(airport.NodeNameWhitelist)
@@ -1239,7 +1297,7 @@ func applyAirportNodeFilter(airport *models.Airport, proxys []protocol.Proxy) []
 
 	// 如果没有任何过滤规则，直接返回
 	if !hasNameWhitelist && !hasNameBlacklist && !hasProtocolWhitelist && !hasProtocolBlacklist {
-		return proxys
+		return proxys, nil
 	}
 
 	// 解析协议白名单和黑名单
@@ -1266,34 +1324,46 @@ func applyAirportNodeFilter(airport *models.Airport, proxys []protocol.Proxy) []
 
 	// 过滤节点
 	result := make([]protocol.Proxy, 0, len(proxys))
+	filteredNodes := make([]NodeFilterReportItem, 0)
 	for _, proxy := range proxys {
 		nodeName := strings.TrimSpace(proxy.Name)
 		nodeProto := proxyProtocolName(proxy)
+		reason := ""
 
 		// 1. 名称黑名单检查（优先级最高）
 		if hasNameBlacklist && utils.MatchesNodeNameFilter(airport.NodeNameBlacklist, nodeName) {
-			continue
+			reason = "name_blacklist"
 		}
 
 		// 2. 名称白名单检查
-		if hasNameWhitelist && !utils.MatchesNodeNameFilter(airport.NodeNameWhitelist, nodeName) {
-			continue
+		if reason == "" && hasNameWhitelist && !utils.MatchesNodeNameFilter(airport.NodeNameWhitelist, nodeName) {
+			reason = "name_whitelist"
 		}
 
 		// 3. 协议黑名单检查
-		if len(protocolBlacklistMap) > 0 && protocolBlacklistMap[nodeProto] {
-			continue
+		if reason == "" && len(protocolBlacklistMap) > 0 && protocolBlacklistMap[nodeProto] {
+			reason = "protocol_blacklist"
 		}
 
 		// 4. 协议白名单检查
-		if len(protocolWhitelistMap) > 0 && !protocolWhitelistMap[nodeProto] {
+		if reason == "" && len(protocolWhitelistMap) > 0 && !protocolWhitelistMap[nodeProto] {
+			reason = "protocol_whitelist"
+		}
+
+		if reason != "" {
+			filteredNodes = append(filteredNodes, NodeFilterReportItem{
+				Name:     nodeName,
+				Protocol: nodeProto,
+				Stage:    stage,
+				Reason:   reason,
+			})
 			continue
 		}
 
 		result = append(result, proxy)
 	}
 
-	return result
+	return result, filteredNodes
 }
 
 func proxyProtocolName(proxy protocol.Proxy) string {

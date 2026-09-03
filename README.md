@@ -62,7 +62,7 @@ English | [简体中文](README.zh-CN.md)
 | ⚡ **Professional speed test system** | Two stage tests, smart latency measurement, IP quality and unlock checks | [📖](docs/features/speedtest.md) |
 | 🔗 **Chain proxy** | Native Dialer-Proxy support, visual configuration, IP quality based node selection | [📖](docs/features/chain-proxy.md) |
 | 🤖 **AI template editing** | Generate operation based previews from natural language, review read-only diffs, accept into the editor, then save normally | [📖](docs/features/template-ai.md) |
-| ✈️ **Airport management** | Multi format import, scheduled updates, traffic monitoring, one click full refresh | [📖](docs/features/airport.md) |
+| ✈️ **Airport management** | Multi format import, scheduled updates, traffic monitoring, one click full refresh, node filter reports | [📖](docs/features/airport.md) |
 | 🗂️ **Group ordering** | Drag airport priority within a group to control node order in subscription output | [📖](docs/development.md) |
 | 📋 **Subscription sharing** | Multiple links, expiration policies, access statistics | [📖](docs/features/subscription-share.md) |
 | 🌐 **Host management** | Domain mappings, DNS configuration, CDN preferred IPs | [📖](docs/features/host.md) |
@@ -107,6 +107,14 @@ Start the service:
 ```bash
 docker-compose up -d
 ```
+
+For local source development, use the development Compose file instead:
+
+```bash
+docker compose -f docker-compose.dev.yml up
+```
+
+It starts the Vite frontend (`http://localhost:3000`, with HMR) and the Go backend (`http://localhost:8000`, with Air auto-reload) separately, so source changes do not require rebuilding the full production image. See the [Development Guide](docs/development.md#use-docker-compose-development-mode-recommended) for details.
 
 Open `http://localhost:8000` and sign in with `admin` / `123456`.
 

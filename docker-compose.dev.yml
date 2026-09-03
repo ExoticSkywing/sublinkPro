@@ -1,0 +1,60 @@
+# SublinkPro 本地开发环境
+# 前端使用 Vite HMR，后端使用 Air 自动重载；修改源码后无需重新构建应用镜像。
+
+services:
+  backend:
+    image: golang:1.26.4-bookworm
+    working_dir: /app
+    command:
+      - /bin/sh
+      - -c
+      - |
+        if [ ! -x /go/bin/air ]; then
+          GOTOOLCHAIN=auto go install github.com/air-verse/air@v1.67.4
+        fi
+        air -c .air.toml
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+      - go-bin:/go/bin
+      - ./db:/app/db
+      - ./logs:/app/logs
+      - ./template:/app/template
+    environment:
+      SUBLINK_PORT: "8000"
+      SUBLINK_LOG_LEVEL: debug
+      GIN_MODE: debug
+      SUBLINK_WEB_BASE_PATH: ""
+
+  frontend:
+    image: node:24-bookworm-slim
+    working_dir: /app/webs
+    command:
+      - /bin/sh
+      - -c
+      - |
+        corepack enable
+        yarn install --immutable
+        yarn run start -- --host 0.0.0.0
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - webs-node-modules:/app/webs/node_modules
+      - corepack-cache:/root/.cache/node/corepack
+    environment:
+      VITE_APP_BASE_NAME: /
+      VITE_API_URL: http://backend:8000
+      VITE_OPEN_BROWSER: "false"
+    depends_on:
+      - backend
+
+volumes:
+  go-mod-cache:
+  go-build-cache:
+  go-bin:
+  webs-node-modules:
+  corepack-cache:

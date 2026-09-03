@@ -159,3 +159,29 @@ func TestAirportBackfillCountryImpliesAutoFillCountryOnSave(t *testing.T) {
 		t.Fatal("expected auto_fill_country to be true when backfill_existing_country is true after update")
 	}
 }
+
+func TestAirportUpdatePersistsNodeFilterSummary(t *testing.T) {
+	setupAirportTestDB(t)
+
+	airport := &Airport{
+		Name:     "过滤报告机场",
+		URL:      "https://example.com/filter-report",
+		CronExpr: "0 */12 * * *",
+	}
+	if err := airport.Add(); err != nil {
+		t.Fatalf("add airport: %v", err)
+	}
+
+	airport.NodeFilterSummary = `{"total":12,"retained":8,"filtered":4,"globalFiltered":3,"airportFiltered":1,"nodes":[{"name":"节点A","stage":"global","reason":"name_blacklist"}]}`
+	if err := airport.Update(); err != nil {
+		t.Fatalf("update airport with filter summary: %v", err)
+	}
+
+	var stored Airport
+	if err := database.DB.First(&stored, airport.ID).Error; err != nil {
+		t.Fatalf("reload airport: %v", err)
+	}
+	if stored.NodeFilterSummary != airport.NodeFilterSummary {
+		t.Fatalf("node filter summary was not persisted: got %q, want %q", stored.NodeFilterSummary, airport.NodeFilterSummary)
+	}
+}

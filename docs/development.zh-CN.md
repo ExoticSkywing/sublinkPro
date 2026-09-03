@@ -98,6 +98,29 @@ go run main.go
 
 默认后端监听 `:8000`。
 
+### 使用 Docker Compose 开发模式（推荐）
+
+如果不想在每次源码修改后重新构建完整生产镜像，可以使用仓库提供的开发 Compose 配置：
+
+```bash
+docker compose -f docker-compose.dev.yml up
+```
+
+该配置会启动两个开发服务：
+
+- 后端 `http://localhost:8000`：Go 源码挂载到容器，通过 Air 自动检测 `.go` 文件并重启后端进程。首次启动会在 Docker volume 中安装 Air，后续启动会复用。
+- 前端 `http://localhost:3000`：Vite 开发服务器，启用热模块替换（HMR），前端 `/api` 请求自动代理到后端。
+
+修改 `webs/src` 下的前端代码会立即刷新浏览器；修改 Go 代码会自动重新编译并重启后端。数据库、日志和模板目录仍使用项目目录中的 `db/`、`logs/`、`template/`；如果开发和生产 Compose 使用同一个项目目录，这些数据也会共享。
+
+停止开发环境：
+
+```bash
+docker compose -f docker-compose.dev.yml down
+```
+
+如果在 Docker Desktop 或网络文件系统中监听不到文件变化，可在 Vite 配置中启用 polling；Linux 本地目录通常不需要 polling。
+
 ### 3. 前端开发
 
 在 `webs/` 下执行：

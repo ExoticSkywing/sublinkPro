@@ -538,6 +538,8 @@ Base: `/api/v1/airports` (all write bodies are JSON)
 - **POST** `/airports/{id}/pull` — pull one now
 - **POST** `/airports/{id}/refresh-usage`
 
+Airport list and detail responses include `nodeFilterSummary` when at least one subscription pull has completed successfully. It is a JSON string containing the latest report (`total`, `filtered`, `retained`, `globalFiltered`, `airportFiltered`, `generatedAt`, and `nodes[]` with `name`, `protocol`, `stage`, and `reason`). `generatedAt` is the RFC 3339 completion time for that successful pull. Older airports may omit this field. A successful pull replaces it; failed pulls leave the previous report unchanged.
+
 Country-fill fields apply during airport pulls and use Country Rules against upstream node names:
 
 - `autoFillCountry`: fills the country code for newly imported nodes whose country is empty.
@@ -632,6 +634,34 @@ Base: `/api/v1/tasks`
 - **GET** `/tasks/{id}/traffic` (query: filters/paging)
 - **POST** `/tasks/{id}/stop`
 - **DELETE** `/tasks` — **JSON** body for clearing history
+
+Completed `sub_update` tasks include a `filterSummary` object in `result`. In `GET /tasks` and `GET /tasks/{id}`, `result` is the task model's JSON string; the SSE `task_progress` completion event sends the same object directly:
+
+```json
+{
+  "added": 2,
+  "updated": 1,
+  "skipped": 5,
+  "deleted": 0,
+  "filterSummary": {
+    "total": 20,
+    "retained": 14,
+    "filtered": 6,
+    "globalFiltered": 4,
+    "airportFiltered": 2,
+    "nodes": [
+      {
+        "name": "Example CN 01",
+        "protocol": "vmess",
+        "stage": "global",
+        "reason": "name_blacklist"
+      }
+    ]
+  }
+}
+```
+
+`total` is the upstream node count before filtering. `filtered` counts only global and airport name/protocol rules, while `retained` is the count after those rules and before deduplication. `nodes` contains one entry per filtered node; `stage` is `global` or `airport`, and `reason` is one of `name_blacklist`, `name_whitelist`, `protocol_blacklist`, or `protocol_whitelist`.
 
 ---
 

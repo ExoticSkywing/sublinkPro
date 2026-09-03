@@ -110,6 +110,8 @@ type Airport struct {
 	// 国家自动填充（拉取时生效）
 	AutoFillCountry         bool `gorm:"default:false" json:"autoFillCountry"`         // 新节点自动填充国家
 	BackfillExistingCountry bool `gorm:"default:false" json:"backfillExistingCountry"` // 回填现存节点国家
+	// 最近一次成功订阅拉取的节点过滤报告（JSON 字符串，避免 models 与 node 包循环依赖）
+	NodeFilterSummary string `gorm:"type:text" json:"nodeFilterSummary,omitempty"`
 }
 
 // TableName 指定表名
@@ -162,7 +164,7 @@ func (a *Airport) Update() error {
 		"FetchUsageInfo", "SkipTLSVerify", "UpdateAfterDetect", "UpdateAfterDetectProfileID", "UpdateAfterDetectChangedOnly", "Remark", "Logo",
 		"NodeNameWhitelist", "NodeNameBlacklist", "ProtocolWhitelist", "ProtocolBlacklist", "NodeNamePreprocess",
 		"DeduplicationRule", "NodeNameUniquify", "NodeNamePrefix", "NodeNameIntraUniquify",
-		"AutoFillCountry", "BackfillExistingCountry",
+		"AutoFillCountry", "BackfillExistingCountry", "NodeFilterSummary",
 	).Updates(a).Error
 	if err != nil {
 		return err

@@ -8,11 +8,12 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const API_URL = `${env.VITE_APP_BASE_NAME}`;
   const PORT = 3000;
+  const OPEN_BROWSER = env.VITE_OPEN_BROWSER !== 'false';
 
   return {
     server: {
-      // this ensures that the browser opens upon server start
-      open: true,
+      // Set VITE_OPEN_BROWSER=false for containerized development.
+      open: OPEN_BROWSER,
       // this sets a default port to 3000
       port: PORT,
       host: true,
