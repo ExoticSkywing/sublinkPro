@@ -12,6 +12,9 @@ static
 sublinkPro.exe
 /sublink
 
+# Local deployment configuration (use docker-compose.example.yml as template)
+docker-compose.yml
+
 # AI agent runtime and temporary files (DO NOT COMMIT)
 .claude/projects/
 .claude/sessions/
