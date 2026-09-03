@@ -209,3 +209,17 @@ export const getTaskActionButtonSx = (theme, tokens, accentColor, options = {}) 
     }
   };
 };
+
+export const getTaskFilterReportButtonSx = (theme, tokens, options = {}) => {
+  const { compact = false, fullWidth = false } = options;
+
+  return {
+    ...getTaskActionButtonSx(theme, tokens, theme.palette.primary.main),
+    minWidth: 0,
+    minHeight: fullWidth ? 28 : compact ? 24 : 26,
+    px: fullWidth ? 1 : 0.75,
+    py: 0.25,
+    fontSize: fullWidth ? '0.72rem' : compact ? { xs: '0.7rem', sm: '0.75rem' } : '0.7rem',
+    '& .MuiButton-startIcon': { mr: 0.35 }
+  };
+};

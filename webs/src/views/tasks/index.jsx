@@ -54,6 +54,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import FilterAltOutlinedIcon from '@mui/icons-material/FilterAltOutlined';
 
 import MainCard from 'ui-component/cards/MainCard';
 import { getTasks, getTaskStats, stopTask, clearTaskHistory } from 'api/tasks';
@@ -73,7 +74,8 @@ import {
   getTaskProgressSx,
   getTaskStatusMeta,
   getTaskTriggerMeta,
-  getTaskTypeMeta
+  getTaskTypeMeta,
+  getTaskFilterReportButtonSx
 } from 'components/taskCenterTheme';
 
 const TASK_STATUS_ICONS = {
@@ -537,7 +539,6 @@ export default function TaskList() {
   const { isDark } = useResolvedColorScheme();
   const tokens = getTaskCenterTokens(theme, isDark);
   const warningTextColor = isDark ? theme.palette.warning.light : theme.palette.warning.contrastText;
-  const warningBorderColor = isDark ? theme.palette.warning.light : theme.palette.warning.dark;
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const tableContainerSx = {
@@ -555,8 +556,6 @@ export default function TaskList() {
   const tableSx = {
     minWidth: 820,
     width: '100%',
-    borderCollapse: 'separate',
-    borderSpacing: '0 6px',
     '& .MuiTableCell-root': {
       px: 1,
       py: 1,
@@ -579,21 +578,12 @@ export default function TaskList() {
   const tableRowSx = {
     cursor: 'pointer',
     transition: 'background-color 0.2s ease',
+    '&:nth-of-type(odd) > .MuiTableCell-root': {
+      bgcolor: tokens.tableHeaderSurface
+    },
     '& > .MuiTableCell-root': {
-      bgcolor: tokens.sectionSurface,
-      borderTop: '1px solid',
       borderBottom: '1px solid',
-      borderColor: tokens.softBorder
-    },
-    '& > .MuiTableCell-root:first-of-type': {
-      borderLeft: '3px solid',
-      borderTopLeftRadius: 10,
-      borderBottomLeftRadius: 10
-    },
-    '& > .MuiTableCell-root:last-of-type': {
-      borderRight: '1px solid',
-      borderTopRightRadius: 10,
-      borderBottomRightRadius: 10
+      borderBottomColor: tokens.softBorder
     },
     '&:hover > .MuiTableCell-root': {
       bgcolor: tokens.rowHoverSurface
@@ -603,8 +593,8 @@ export default function TaskList() {
   const getTableRowSx = (task) => ({
     ...tableRowSx,
     '& > .MuiTableCell-root:first-of-type': {
-      ...tableRowSx['& > .MuiTableCell-root:first-of-type'],
-      borderLeftColor: getTaskTypeMeta(task.type, t).color
+      borderInlineStart: `3px solid ${getTaskTypeMeta(task.type, t).color}`,
+      paddingInlineStart: 1.25
     }
   });
 
@@ -1155,18 +1145,14 @@ export default function TaskList() {
                     <Button
                       size="small"
                       fullWidth
+                      variant="outlined"
+                      startIcon={<FilterAltOutlinedIcon sx={{ fontSize: '15px !important' }} />}
                       sx={{
+                        ...getTaskFilterReportButtonSx(theme, tokens, { fullWidth: true }),
                         mt: -1.5,
                         mb: 1.5,
                         borderTopLeftRadius: 0,
-                        borderTopRightRadius: 0,
-                        color: warningTextColor,
-                        bgcolor: alpha(theme.palette.warning.main, tokens.isDark ? 0.12 : 0.04),
-                        border: '1px solid',
-                        borderColor: alpha(warningBorderColor, tokens.isDark ? 0.32 : 0.45),
-                        '&:hover': {
-                          bgcolor: alpha(theme.palette.warning.main, tokens.isDark ? 0.18 : 0.08)
-                        }
+                        borderTopRightRadius: 0
                       }}
                       onClick={() => setFilterReportTask({ taskName: task.name, summary: filterSummary })}
                     >
@@ -1276,12 +1262,11 @@ export default function TaskList() {
                           {filterSummary && (
                             <Button
                               size="small"
+                              variant="outlined"
+                              startIcon={<FilterAltOutlinedIcon sx={{ fontSize: '15px !important' }} />}
                               sx={{
-                                mt: 0.5,
-                                p: 0,
-                                minWidth: 0,
-                                textTransform: 'none',
-                                color: warningTextColor
+                                ...getTaskFilterReportButtonSx(theme, tokens),
+                                mt: 0.5
                               }}
                               onClick={() => setFilterReportTask({ taskName: task.name, summary: filterSummary })}
                             >

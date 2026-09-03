@@ -23,6 +23,7 @@ import StopIcon from '@mui/icons-material/Stop';
 import CancelIcon from '@mui/icons-material/Cancel';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import FilterAltOutlinedIcon from '@mui/icons-material/FilterAltOutlined';
 import { useTaskProgress } from 'contexts/TaskProgressContext';
 import useResolvedColorScheme from 'hooks/useResolvedColorScheme';
 
@@ -32,6 +33,7 @@ import {
   getTaskActionButtonSx,
   getTaskCardSx,
   getTaskCenterTokens,
+  getTaskFilterReportButtonSx,
   getTaskChipSx,
   getTaskIconBoxSx,
   getTaskProgressSx,
@@ -429,18 +431,14 @@ const TaskProgressItem = ({ task, currentTime, onStopTask, isStopping, onViewFil
                     {filterSummary && onViewFilterReport && (
                       <Button
                         size="small"
-                        variant="text"
+                        variant="outlined"
+                        startIcon={<FilterAltOutlinedIcon sx={{ fontSize: '15px !important' }} />}
                         onClick={(event) => {
                           event.stopPropagation();
                           onViewFilterReport({ taskName: task.taskName, summary: filterSummary });
                         }}
                         sx={{
-                          minWidth: 0,
-                          minHeight: 24,
-                          px: 0.5,
-                          py: 0,
-                          fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                          textTransform: 'none'
+                          ...getTaskFilterReportButtonSx(theme, tokens, { compact: true })
                         }}
                       >
                         {t('tasks.filterReport.view', { count: filterSummary.filtered || 0 })}
