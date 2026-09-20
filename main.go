@@ -21,6 +21,7 @@ import (
 	"sublink/routers"
 	"sublink/services"
 	"sublink/services/cloudflared"
+	"sublink/services/distribution"
 	"sublink/services/geoip"
 	"sublink/services/mihomo"
 	"sublink/services/notifications"
@@ -314,6 +315,9 @@ func initDatabase(dsn, dbPath, logPath, logLevel, configFile string, port int) e
 	if err := models.RunMigrations(); err != nil {
 		return err
 	}
+	if err := distribution.New(database.DB, "").Migrate(); err != nil {
+		return fmt.Errorf("初始化分发业务: %w", err)
+	}
 
 	// 初始化敏感配置访问器
 	models.InitSecretAccessors()
@@ -409,7 +413,10 @@ func Run() {
 	utils.Info("日志等级: %s", utils.GetLogLevel())
 
 	// 初始化gin框架
-	r := gin.Default()
+	r := gin.New()
+	r.Use(gin.LoggerWithConfig(gin.LoggerConfig{Skip: func(c *gin.Context) bool {
+		return strings.HasPrefix(c.Request.URL.Path, "/d/")
+	}}), gin.Recovery())
 	trustedProxies := cfg.TrustedProxies
 	if len(trustedProxies) == 0 {
 		trustedProxies = nil
@@ -646,6 +653,7 @@ func Run() {
 	routers.GeoIP(r)
 	routers.Host(r)
 	routers.Share(r)
+	routers.Distribution(r)
 	routers.Airport(r)
 	routers.GroupSort(r)
 	routers.NodeCheck(r)
@@ -664,7 +672,7 @@ func Run() {
 
 		// 订阅请求（/c/）由路由处理，这里不应该到达
 		// 如果到达这里说明订阅链接无效
-		if strings.HasPrefix(path, "/c/") {
+		if strings.HasPrefix(path, "/c/") || strings.HasPrefix(path, "/d/") {
 			c.JSON(404, gin.H{"error": "Subscription not found"})
 			return
 		}

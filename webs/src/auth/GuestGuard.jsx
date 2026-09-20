@@ -21,7 +21,7 @@ export default function GuestGuard({ children }) {
 
   // 已登录则跳转到首页
   if (isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/admin" replace />;
   }
 
   return children;

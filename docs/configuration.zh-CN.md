@@ -2,6 +2,14 @@
 
 # 配置说明
 
+本 fork 的分发设置通过 `/admin/distribution` 管理，不写入 `config.yaml`：默认试用 15 天、免费续期 7 天、轮换周期 7 天，另有 UTC 周期起点、订阅域名、公开页地址、UA 正则、可选降级资源订阅和到期文案。天数均可设 1–365。详见[订阅分发](features/distribution.zh-CN.md)。现有 API 加密密钥同时用于链接及卡密加密，请保持稳定并随数据库备份。
+
+默认 UA 正则已包含 `ClashMetaForAndroid/…`。启动升级只更新与旧版完整默认规则一致的保存值，不覆盖自定义正则，也不改变其他分发设置。
+
+分发 `region_limit` 保存在业务设置数据库中，不通过 YAML 或环境变量配置。在「分发设置」选择每条订阅允许 1 或 2 个城市（默认 2），测试可临时设为 1，保存后对拉取和审核立即生效。不会删除原有地区绑定：如果未删除的订阅已超过新上限，降额操作会被拒绝。升级与省略该字段的旧接口请求保留已保存值。这是地区限制，不是设备数限制。
+
+到期提示可配置 1–10 条有序文案，每条最多 200 字；`{portal}` 代表续订网址。列表保存在数据库的 `expired_messages` 字段，旧单条文案仍兼容；无需新增环境变量或 YAML 配置。
+
 本文档详细介绍 SublinkPro 的配置方式和各项参数。
 
 ---
@@ -33,6 +41,10 @@ SublinkPro 支持多种配置方式，优先级从高到低为：
 | `SUBLINK_LOGIN_FAIL_WINDOW` | 登录失败窗口(分钟)                      | 1                                   |
 | `SUBLINK_LOGIN_BAN_DURATION` | 登录封禁时间(分钟)                      | 10                                  |
 | `SUBLINK_GEOIP_PATH` | GeoIP数据库路径                      | ./db/GeoLite2-City.mmdb             |
+| `SUBLINK_IP2REGION_V4_PATH` / `SUBLINK_IP2REGION_V6_PATH` | 仅分发使用的离线城市兜底（v3 XDB） | `<db_path>/ip2region_v4.xdb` / `ip2region_v6.xdb` |
+| `SUBLINK_IPDATA_API_KEY_FILE` | ipdata 服务端密钥文件；不存在时禁用外部兜底 | `<db_path>/secrets/ipdata-api-key` |
+| `SUBLINK_IPDATA_API_KEY` | 可选环境变量覆盖；显式空值禁用 | 未设置 |
+| `SUBLINK_IPDATA_DAILY_LIMIT` | 每进程每 24 小时外部请求尝试上限；0 禁用 | 500 |
 | `SUBLINK_CAPTCHA_MODE` | 验证码模式 (1=关闭, 2=传统, 3=Turnstile) | 2                                   |
 | `SUBLINK_TURNSTILE_SITE_KEY` | Cloudflare Turnstile Site Key   | -                                   |
 | `SUBLINK_TURNSTILE_SECRET_KEY` | Cloudflare Turnstile Secret Key | -                                   |
@@ -384,6 +396,18 @@ trusted_proxies: []
 ```
 
 ---
+
+## 分发城市定位兜底（production 分支）
+
+分发拉取按照 **24 小时 IP 缓存 → GeoLite2 → ip2region → ipdata** 定位。失败结果缓存一分钟；最多保存 4,096 个 IP，同一 IP 的并发查询合并处理。重新加载 GeoLite2 会使旧定位缓存失效。此缓存不保存订阅内容，也不会跳过链接状态或有效期检查。
+
+将官方 [ip2region](https://github.com/lionsoul2014/ip2region) v3 的 `data/ip2region_v4.xdb`、`data/ip2region_v6.xdb` 放入挂载的数据目录；不会自动下载或更新。当前接入验证的数据版本为 `c1a1fc7d5941760db3f8431dc05c48cf7f0e30a1`。替换 XDB 后重启后端；IPv4、IPv6 可独立配置，不要混用旧版 v2 的五字段格式。
+
+仍需保留 GeoLite2-City：程序从库中提取中英文省市别名，统一映射回已有 GeoNames 城市编号，补足 IP 到城市的覆盖缺口而不迁移已授权地区。别名未知或歧义、已知国家／省份冲突、所有来源都查不到时均不授权；明确的境外结果不会继续尝试其他来源以求放行。定位准确性仍需真实用户验证。
+
+可选的 ipdata 兜底密钥只写入 `<db_path>/secrets/ipdata-api-key`（目录权限 700、文件权限 600），或挂载独立密钥文件并设置 `SUBLINK_IPDATA_API_KEY_FILE`。显式设置的 `SUBLINK_IPDATA_API_KEY` 优先于文件，空值可禁用。以上部署选项**只通过环境变量／独立文件配置**，不是 YAML 或后台表单字段；修改后重启，禁止将真实密钥提交到仓库。只向固定 HTTPS 接口发送用户 IP，不发送订阅 token、UA 或卡密。查询超时两秒、禁止重定向，每秒一次（允许突发 5 次），默认每进程每 24 小时最多尝试 500 次。重启会重置本地计数，提供商额度仍以服务端为准。遇到 429 暂停 15 分钟，401／403 暂停一小时，网络或其他 HTTP 错误暂停一分钟。缺少密钥、超时、额度耗尽不会放宽地区限制。HEAD、无效链接、非白名单 UA、停用链接均不调用外部服务。
+
+[ipdata 免费档](https://ipdata.co/pricing.html)仅限非商业用途；付费分发正式使用需选择合适的商业套餐，并确认向第三方发送 IP 的隐私处理要求。无需改前端配置。
 
 ## Docker 部署示例（带环境变量）
 

@@ -162,6 +162,8 @@ If your earlier instance used SQLite and you now want to migrate to MySQL or Pos
 
 ### ✨ Feature Guides
 
+This fork's `production` branch adds [subscription distribution](docs/features/distribution.md): stable recipient links, trial/paid renewals, configurable one/two-city limits and a public self-service portal. Paste a recipient's full link or a complete card code to locate its record precisely. Links support direct row copying (auto-detect or a selected native format) and individual/batch deletion with redemption history and code bindings retained. Loon auto-detection uses native node lists without Sub-Store. Denial notices use separate short entries; expiry notices support multiple custom messages and ordering. Cards support editing, enable/disable, batch deletion and explicit free-code reissue while retaining granted benefits and redemption history. Optional ip2region and ipdata city fallbacks supplement GeoLite2 without relaxing city limits. Administration is under `/admin`; `/` is the public portal. `main` tracks upstream.
+
 | Document | Description |
 |:---|:---|
 | [🏷️ Smart tag system](docs/features/tags.md) | Automatic rule based tagging, no code filtering, IP quality rules |

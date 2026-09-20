@@ -2,6 +2,8 @@ English | [简体中文](development.zh-CN.md)
 
 # Development Guide
 
+For this fork, develop custom features on `production`; `main` tracks upstream. The existing Vite + Air workflow remains unchanged. Open `http://localhost:3000/` for the public portal or `http://localhost:3000/admin/distribution` for distribution administration. Vite also proxies `/d/` to the backend. Validate here before separately building/deploying production. See [distribution](features/distribution.md).
+
 Welcome to SublinkPro development. This guide focuses on:
 
 - How to run the backend and frontend locally

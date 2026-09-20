@@ -54,6 +54,8 @@ suffix for Chinese.
 > when the user wants to read the canonical project documentation.
 
 ### Feature guides
+
+Fork-only: subscription distribution, cards, two-city approval and public renewal are documented in `docs/features/distribution.md` / `docs/features/distribution.zh-CN.md` on the fork's `production` branch. Read these from the fork checkout, not the upstream raw URL above.
 | User asks about | Doc path |
 |---|---|
 | Smart tag system — rule-based auto-tagging, mutually-exclusive groups, IP quality conditions | `docs/features/tags.md` |

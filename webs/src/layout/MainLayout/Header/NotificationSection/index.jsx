@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link as RouterLink } from 'react-router-dom';
 
 // material-ui
 import { useTheme } from '@mui/material/styles';
@@ -7,6 +8,8 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import Avatar from '@mui/material/Avatar';
 import Badge from '@mui/material/Badge';
 import Button from '@mui/material/Button';
+import ButtonBase from '@mui/material/ButtonBase';
+import Alert from '@mui/material/Alert';
 import CardActions from '@mui/material/CardActions';
 import Chip from '@mui/material/Chip';
 import ClickAwayListener from '@mui/material/ClickAwayListener';
@@ -18,6 +21,7 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
 import ListItemAvatar from '@mui/material/ListItemAvatar';
 import ListItemText from '@mui/material/ListItemText';
 import Tooltip from '@mui/material/Tooltip';
@@ -30,6 +34,7 @@ import useResolvedColorScheme from 'hooks/useResolvedColorScheme';
 import { getHeaderPopoverTokens, getHeaderTriggerTokens } from '../headerPopoverTokens';
 import { withAlpha } from 'utils/colorUtils';
 import { formatDateTime } from 'i18n/locales';
+import { useRegionRequests } from 'views/distribution/RegionRequestContext';
 
 // assets
 import { IconBell, IconCheck, IconTrash, IconCircleCheck, IconCircleX, IconInfoCircle } from '@tabler/icons-react';
@@ -55,6 +60,7 @@ export default function NotificationSection() {
   const { t, i18n } = useTranslation();
   const downMD = useMediaQuery(theme.breakpoints.down('md'));
   const { notifications, clearAllNotifications } = useAuth();
+  const { count: pendingCount, error: pendingError, refresh: refreshPending } = useRegionRequests();
   const { isDark } = useResolvedColorScheme();
   const bellAccent = theme.palette.primary.main;
   const {
@@ -105,8 +111,14 @@ export default function NotificationSection() {
 
   // 计算未读数
   const unreadCount = notifications.filter((n) => !readIds.has(n.id)).length;
+  const badgeCount = unreadCount + (pendingCount || 0);
+  const pendingLabel = pendingCount > 0 ? t('distribution.pendingRegions', { count: pendingCount }) : '';
+  const bellLabel = [t('notifications.title'), pendingLabel, pendingError && t('distribution.pendingRegionsFailed')]
+    .filter(Boolean)
+    .join(' · ');
 
   const handleToggle = () => {
+    if (!open) refreshPending();
     setOpen((prevOpen) => !prevOpen);
   };
 
@@ -156,6 +168,14 @@ export default function NotificationSection() {
 
   const prevOpen = useRef(open);
   useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [open]);
+  useEffect(() => {
     if (prevOpen.current === true && open === false) {
       anchorRef.current.focus();
     }
@@ -165,9 +185,11 @@ export default function NotificationSection() {
   return (
     <>
       <Box sx={{ ml: { xs: 1, md: 2 } }}>
-        <Tooltip title={t('notifications.title')}>
-          <Badge badgeContent={unreadCount} color="error" max={99}>
+        <Tooltip title={bellLabel}>
+          <Badge badgeContent={badgeCount || (pendingError ? '!' : 0)} color="error" max={99}>
             <Avatar
+              component={ButtonBase}
+              type="button"
               variant="rounded"
               sx={{
                 ...theme.typography.commonAvatar,
@@ -178,15 +200,21 @@ export default function NotificationSection() {
                 border: '1px solid',
                 borderColor: triggerBorder,
                 position: 'relative',
-                '&:hover, &[aria-controls="menu-list-grow"]': {
+                '&:hover, &[aria-expanded="true"]': {
                   color: activeColor,
                   background: activeSurface,
                   borderColor: activeBorder
+                },
+                '&:focus-visible': {
+                  outline: '2px solid',
+                  outlineColor: 'primary.main',
+                  outlineOffset: 2
                 }
               }}
               ref={anchorRef}
-              aria-controls={open ? 'menu-list-grow' : undefined}
-              aria-haspopup="true"
+              aria-label={bellLabel}
+              aria-controls={open ? 'header-notifications' : undefined}
+              aria-expanded={open}
               onClick={handleToggle}
             >
               <IconBell stroke={1.5} size="20px" />
@@ -206,7 +234,7 @@ export default function NotificationSection() {
         {({ TransitionProps }) => (
           <ClickAwayListener onClickAway={handleClose}>
             <Transitions position={downMD ? 'top' : 'top-right'} in={open} {...TransitionProps}>
-              <Paper sx={{ bgcolor: 'transparent' }}>
+              <Paper id="header-notifications" role="region" aria-label={t('notifications.title')} sx={{ bgcolor: 'transparent' }}>
                 {open && (
                   <MainCard
                     border={false}
@@ -286,6 +314,33 @@ export default function NotificationSection() {
                           }
                         }}
                       >
+                        {pendingError && (
+                          <Alert severity="warning" action={<Button onClick={refreshPending}>{t('distribution.refresh')}</Button>}>
+                            {t('distribution.pendingRegionsFailed')}
+                          </Alert>
+                        )}
+                        {(pendingCount > 0 || pendingError) && (
+                          <ListItemButton
+                            component={RouterLink}
+                            to="/admin/distribution?tab=region-requests"
+                            onClick={() => setOpen(false)}
+                            sx={{
+                              px: 2,
+                              py: 2,
+                              bgcolor: selectedSurface,
+                              borderBottom: '1px solid',
+                              borderColor: popoverBorder,
+                              '&:hover': { bgcolor: selectedHoverSurface },
+                              '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: -2 }
+                            }}
+                          >
+                            <ListItemText
+                              primary={pendingLabel || t('distribution.regionApplications')}
+                              secondary={t('distribution.reviewRegions')}
+                              slotProps={{ primary: { fontWeight: 600, color: 'text.primary' }, secondary: { color: 'text.secondary' } }}
+                            />
+                          </ListItemButton>
+                        )}
                         {notifications.length > 0 ? (
                           <List sx={{ py: 0 }}>
                             {notifications.map((notification, index) => {
@@ -396,13 +451,13 @@ export default function NotificationSection() {
                               );
                             })}
                           </List>
-                        ) : (
+                        ) : !pendingCount && !pendingError ? (
                           <Box sx={{ py: 4, textAlign: 'center' }}>
                             <Typography variant="body2" sx={{ color: mutedText }}>
                               {t('notifications.empty')}
                             </Typography>
                           </Box>
-                        )}
+                        ) : null}
                       </Box>
                     </Stack>
                     {notifications.length > 0 && (

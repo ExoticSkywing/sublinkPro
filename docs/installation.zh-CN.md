@@ -2,6 +2,8 @@
 
 # 安装部署指南
 
+本 fork 的 `production` 构建中，`/` 是分发公开页，后台入口为 `/admin`。反代需放行 `/d/` 和 `/api/`、禁用缓存并正确传递真实 IP，后端精确配置可信代理。分发功能需要 GeoLite2-City 和稳定的 API 加密密钥。可选的 ip2region/ipdata [城市兜底](configuration.zh-CN.md#分发城市定位兜底production-分支)使用独立数据文件和服务端密钥。详见[分发部署说明](features/distribution.zh-CN.md)；上游镜像不包含本分支业务。
+
 本文档介绍 SublinkPro 的完整安装、更新和卸载方法。
 
 ---

@@ -70,6 +70,12 @@ services:
       # 系统启动时会自动检测并下载 GeoIP 数据库，无需手动配置
       # 如需自定义路径，请取消注释以下配置
       # - SUBLINK_GEOIP_PATH=/app/db/GeoLite2-City.mmdb
+      # 分发城市兜底（production 分支）：XDB 文件需单独下载，替换后重启
+      # - SUBLINK_IP2REGION_V4_PATH=/app/db/ip2region_v4.xdb
+      # - SUBLINK_IP2REGION_V6_PATH=/app/db/ip2region_v6.xdb
+      # ipdata 可选，只挂载密钥文件，不在 compose 中填写真实密钥
+      # - SUBLINK_IPDATA_API_KEY_FILE=/app/db/secrets/ipdata-api-key
+      # - SUBLINK_IPDATA_DAILY_LIMIT=500
       
       # ---------- 验证码配置 ----------
       # 验证码模式: 1=关闭 | 2=传统(默认) | 3=Cloudflare Turnstile

@@ -19,6 +19,11 @@ export default defineConfig(({ mode }) => {
       host: true,
       // API proxy configuration
       proxy: {
+        '/d/': {
+          target: env.VITE_API_URL || 'http://localhost:8080',
+          changeOrigin: false,
+          secure: false
+        },
         '/api': {
           target: env.VITE_API_URL || 'http://localhost:8080',
           changeOrigin: true,
@@ -86,7 +91,7 @@ export default defineConfig(({ mode }) => {
           runtimeCaching: [
             {
               // 导航请求使用 NetworkFirst 策略
-              urlPattern: ({ request }) => request.mode === 'navigate',
+              urlPattern: ({ request, url }) => request.mode === 'navigate' && !/^\/(api|c|d)(\/|$)/.test(url.pathname),
               handler: 'NetworkFirst',
               options: {
                 cacheName: 'pages-cache',

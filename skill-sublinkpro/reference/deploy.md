@@ -14,6 +14,8 @@ main `SKILL.md`.
 
 ## Defaults & key facts
 
+Fork `production` builds add a public portal at `/` and administration at `/admin` (both retain a configured Web Base Path). Route `/d/` and `/api/` to the backend without caching; redact distribution tokens in proxy logs. Preserve real IPs, restrict trusted proxies, provide GeoLite2-City, and back up the effective API encryption key with the database. Upstream images do not contain this business. See `docs/features/distribution.md` in the fork checkout.
+
 - **Image:** `zerodeng/sublink-pro` (stable) or `zerodeng/sublink-pro:dev` (dev/preview builds).
 - **Port:** `8000` (web UI + API).
 - **Default login:** `admin` / `123456` — tell the user to change it immediately.
@@ -203,6 +205,10 @@ file: `config.example.yaml` in the repo root — point power users there.
 | `SUBLINK_TURNSTILE_PROXY_LINK` | _(unset)_ | Proxy (mihomo link) for Turnstile verify when the server can't reach Cloudflare. |
 | `SUBLINK_WEB_BASE_PATH` | _(unset)_ | Hide admin UI behind a path (e.g. `/admin`). Does **not** affect `/api/*` or `/c/*`. |
 | `SUBLINK_GEOIP_PATH` | `db/GeoLite2-City.mmdb` | GeoIP DB path; auto-downloaded if missing. |
+| `SUBLINK_IP2REGION_V4_PATH` / `SUBLINK_IP2REGION_V6_PATH` | `<db_path>/ip2region_v4.xdb` / `ip2region_v6.xdb` | Fork delivery city fallback, official v3 XDB; install/update manually and restart. |
+| `SUBLINK_IPDATA_API_KEY_FILE` | `<db_path>/secrets/ipdata-api-key` | Optional server-only key, file mode 600, parent 700. Missing file disables remote fallback. |
+| `SUBLINK_IPDATA_API_KEY` | unset | Overrides key file; explicit empty disables. Never commit or send to browsers. |
+| `SUBLINK_IPDATA_DAILY_LIMIT` | `500` | External attempts per process per 24 hours; 0 disables. Counter resets on restart. |
 | `SUBLINK_TRUSTED_PROXIES` | local/private CIDRs | Comma-separated trusted reverse-proxy IPs/CIDRs for real-client-IP. |
 | `SUBLINK_LOGIN_FAIL_COUNT` | `5` | Failed logins before IP ban. |
 | `SUBLINK_LOGIN_FAIL_WINDOW` | `1` | Failure-count window (minutes). |
@@ -210,6 +216,8 @@ file: `config.example.yaml` in the repo root — point power users there.
 | `SUBLINK_JWT_SECRET` | _(auto-generated)_ | Login-token signing key. Set (≥32 chars) for multi-instance/migration. |
 | `SUBLINK_API_ENCRYPTION_KEY` | _(auto-generated)_ | API-Key encryption key. **Must match** across instances or existing API keys break. |
 | `SUBLINK_MFA_RESET_SECRET` | _(auto-generated)_ | Secret for the MFA emergency-reset flow. |
+
+Fork delivery city fallback: cache → GeoLite2 → ip2region → ipdata; the installed City database also provides canonical GeoNames IDs for cross-provider aliases. Unmapped/conflicting results never authorize access. ipdata uses direct HTTPS, two-second timeouts and quota/cooldown protection; it receives only the client IP. The free tier is non-commercial. These fork options are environment/secret-file only, require restart and are not saved in `config.yaml` or exposed through settings APIs. See [configuration](../../docs/configuration.md#distribution-city-fallback-production-fork).
 
 DSN examples:
 

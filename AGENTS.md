@@ -437,6 +437,7 @@ Start here when changing behavior:
 |---|---|
 | Auth/MFA | `api/auth.go`, `api/auth_mfa.go`, `middlewares/` |
 | Subscriptions | `api/clients.go` |
+| Fork distribution | `services/distribution/`, `api/distribution*.go`, `webs/src/views/distribution/` |
 | mihomo core | `services/mihomo/` |
 | Scheduled tasks | `services/scheduler/` |
 | Tags | `services/tag_service.go` |
@@ -462,6 +463,7 @@ Start here when changing behavior:
 - `docs/configuration.md` - Configuration reference
 - `docs/security-guidelines.md` - Security best practices
 - `docs/features/` - Feature-specific guides
+- `docs/features/distribution.md` / `.zh-CN.md` - Fork recipient links, cards, city requests and public portal
 - `skill-sublinkpro/` - AI agent skill for REST API interaction
 
 ### For developers
@@ -499,6 +501,7 @@ Start here when changing behavior:
 - Frontend requests go through `webs/src/api/request.js`
 - API boundary: `/api/*`
 - Subscription access: `/c/*`
+- Fork distribution access: `/d/*`; public self-service `/`, administration `/admin/*`, separate `distribution_*` tables
 - `SUBLINK_WEB_BASE_PATH` affects Web UI routing, not `/api/*` or `/c/*`
 
 **skill-sublinkpro is also a REST API consumer**: 

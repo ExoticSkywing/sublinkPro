@@ -185,6 +185,9 @@ func executeDatabaseMigration(ctx context.Context, taskID, uploadPath, originalN
 
 	if err := database.WithTransaction(func(tx *gorm.DB) error {
 		state.tx = tx
+		if err := ensureDistributionMigrationSafe(tx, sourceDB); err != nil {
+			return err
+		}
 
 		preservedSettings, err := loadPreservedTargetSettings(tx)
 		if err != nil {

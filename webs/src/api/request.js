@@ -71,7 +71,7 @@ request.interceptors.response.use(
         localStorage.removeItem('accessToken');
 
         const basePath = window.__SUBLINK_CONFIG__?.basePath || import.meta.env.VITE_APP_BASE_NAME || '/';
-        const loginPath = basePath.replace(/\/+$/, '') + '/login';
+        const loginPath = basePath.replace(/\/+$/, '') + '/admin/login';
 
         if (window.location.pathname !== loginPath) {
           window.location.href = loginPath;

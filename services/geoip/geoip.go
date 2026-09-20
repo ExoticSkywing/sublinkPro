@@ -7,18 +7,21 @@ import (
 	"sublink/config"
 	"sublink/utils"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/oschwald/geoip2-golang/v2"
 )
 
 var (
-	geoIP     *geoip2.Reader
-	mu        sync.RWMutex
-	dbPath    string    // 当前加载的数据库路径
-	available bool      // 数据库是否可用
-	dbInfo    *DBInfo   // 数据库信息
-	initOnce  sync.Once // 确保只初始化一次
+	geoIP          *geoip2.Reader
+	mu             sync.RWMutex
+	dbPath         string    // 当前加载的数据库路径
+	available      bool      // 数据库是否可用
+	dbInfo         *DBInfo   // 数据库信息
+	initOnce       sync.Once // 确保只初始化一次
+	cityAliases    *cityIndex
+	cityGeneration atomic.Uint64
 )
 
 // DBInfo 数据库信息
@@ -43,6 +46,8 @@ func InitGeoIP() error {
 func loadDatabase() error {
 	mu.Lock()
 	defer mu.Unlock()
+	cityGeneration.Add(1)
+	cityAliases = nil
 
 	// 获取配置的路径
 	path := config.GetGeoIPPath()
@@ -91,6 +96,11 @@ func loadDatabase() error {
 	}
 
 	geoIP = reader
+	if aliases, err := loadCityIndex(path); err == nil {
+		cityAliases = aliases
+	} else {
+		utils.Warn("GeoIP 城市名称索引不可用，分发定位兜底将拒绝无法映射的城市")
+	}
 	available = true
 	dbInfo = &DBInfo{
 		Path:      path,

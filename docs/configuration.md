@@ -20,6 +20,14 @@ SublinkPro supports several configuration methods. Priority from highest to lowe
 
 ## Environment Variables
 
+Fork-specific distribution settings are managed at `/admin/distribution`, not in `config.yaml`: trial 15 days, free benefit 7 days, cycle 7 days, UTC cycle anchor, subscription domain, portal URL, allowed-UA regexp, optional fallback subscription and expiry message. Day values accept 1–365. See [distribution](features/distribution.md) for defaults, key backup and trusted-proxy requirements. The existing API encryption key also encrypts issued links and cards; keep it stable.
+
+The default UA regexp includes `ClashMetaForAndroid/…`. Startup upgrades only saved values matching the complete legacy default, preserving custom regexps and all other distribution settings.
+
+Distribution `region_limit` is stored in the business settings database, not YAML or environment variables. In **Distribution settings**, choose 1 or 2 cities per subscription (default: 2); use 1 temporarily for testing. Saving takes effect immediately for fetches and approvals. Existing bindings are never deleted: a lower limit that conflicts with any undeleted subscription is rejected. Upgrades and API writes omitting the field preserve a previously saved limit. This is a city limit, not a device-count limit.
+
+Expiry notices accept 1–10 ordered messages of up to 200 characters each; `{portal}` represents the renewal URL. The list is stored in the database's `expired_messages` field, with legacy single-message compatibility. No new environment variables or YAML keys are required.
+
 | Environment variable | Description | Default |
 |----------|---------------------------------|-------------------------------------|
 | `SUBLINK_PORT` | Service port | 8000 |
@@ -33,6 +41,10 @@ SublinkPro supports several configuration methods. Priority from highest to lowe
 | `SUBLINK_LOGIN_FAIL_WINDOW` | Login failure window, in minutes | 1 |
 | `SUBLINK_LOGIN_BAN_DURATION` | Login ban duration, in minutes | 10 |
 | `SUBLINK_GEOIP_PATH` | GeoIP database path | ./db/GeoLite2-City.mmdb |
+| `SUBLINK_IP2REGION_V4_PATH` / `SUBLINK_IP2REGION_V6_PATH` | Distribution-only offline city fallback (v3 XDB) | `<db_path>/ip2region_v4.xdb` / `ip2region_v6.xdb` |
+| `SUBLINK_IPDATA_API_KEY_FILE` | Server-only ipdata key file; missing file disables remote fallback | `<db_path>/secrets/ipdata-api-key` |
+| `SUBLINK_IPDATA_API_KEY` | Optional environment override, including empty to disable | unset |
+| `SUBLINK_IPDATA_DAILY_LIMIT` | Per-process external attempts per 24-hour window; 0 disables | 500 |
 | `SUBLINK_CAPTCHA_MODE` | CAPTCHA mode, 1=off, 2=image, 3=Turnstile | 2 |
 | `SUBLINK_TURNSTILE_SITE_KEY` | Cloudflare Turnstile Site Key | - |
 | `SUBLINK_TURNSTILE_SECRET_KEY` | Cloudflare Turnstile Secret Key | - |
@@ -383,6 +395,18 @@ trusted_proxies: []
 ```
 
 ---
+
+## Distribution city fallback (production fork)
+
+Delivery checks use **24-hour IP cache → GeoLite2 → ip2region → ipdata**. Unknown results are cached for one minute; cache capacity is 4,096 IPs and simultaneous lookups for the same IP are merged. GeoLite2 reload invalidates cached locations. This cache never stores subscription content or bypasses credential/expiry checks.
+
+Install the official [ip2region](https://github.com/lionsoul2014/ip2region) v3 `data/ip2region_v4.xdb` and `data/ip2region_v6.xdb` into the mounted data directory. These files are not automatically downloaded or updated. This integration was tested with data revision `c1a1fc7d5941760db3f8431dc05c48cf7f0e30a1`; restart after replacing XDB files. IPv4/IPv6 are optional independently. Do not substitute the old five-field v2 format.
+
+Keep GeoLite2-City installed: Chinese/English province and city aliases are indexed from it and mapped back to existing GeoNames IDs. This fixes missing IP-to-city coverage without migrating existing city grants. Unknown or ambiguous aliases, conflicting known countries/provinces, and completely unlocated IPs do not authorize access. A known foreign result is terminal, not a reason to try another provider. Location accuracy still needs real-world verification.
+
+For optional ipdata fallback, put only the key in `<db_path>/secrets/ipdata-api-key` (directory mode 700, file mode 600), or mount a secret file and set `SUBLINK_IPDATA_API_KEY_FILE`. An explicitly set `SUBLINK_IPDATA_API_KEY` overrides the file, including an empty value to disable. These deployment options are **environment/file-only**, not YAML settings or Web UI fields; restart after changing them. Never commit the key. Only the client IP is sent to the fixed HTTPS endpoint; no subscriber tokens, UA, or card codes are forwarded. Requests use a two-second timeout, no redirects, one request/second (burst 5), and a default 500-attempt budget per process per 24 hours. Restart resets the local counter; the provider's quota remains authoritative. 429 pauses remote requests for 15 minutes; 401/403 for an hour; transport errors/other HTTP failures for a minute. Missing keys, timeouts and exhausted quotas never weaken city restrictions. HEAD, invalid tokens, unsupported UAs and disabled links make no external calls.
+
+The [ipdata free tier](https://ipdata.co/pricing.html) is restricted to non-commercial use; choose an appropriate paid plan for commercial distribution. Review IP data processing requirements before enabling this provider. No frontend configuration changes are needed.
 
 ## Docker Deployment Example with Environment Variables
 

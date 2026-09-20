@@ -2,6 +2,8 @@ English | [简体中文](installation.zh-CN.md)
 
 # Installation Guide
 
+For this fork's `production` build, `/` is the public distribution portal and administration is under `/admin`. Forward `/d/` and `/api/` without caching, preserve real client IPs, and configure trusted proxies precisely. Distribution requires GeoLite2-City and a persistent API encryption key. Optional ip2region/ipdata [city fallback](configuration.md#distribution-city-fallback-production-fork) uses separate data files and a server-only secret. See [distribution deployment notes](features/distribution.md); upstream images do not include this fork's business.
+
 This document explains how to install, update, and uninstall SublinkPro.
 
 ---

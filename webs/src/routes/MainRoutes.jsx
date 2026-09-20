@@ -5,6 +5,7 @@ import { Navigate } from 'react-router-dom';
 import MainLayout from 'layout/MainLayout';
 import Loadable from 'ui-component/Loadable';
 import AuthGuard from 'auth/AuthGuard';
+import { RegionRequestProvider } from 'views/distribution/RegionRequestContext';
 
 // dashboard routing
 const DashboardDefault = Loadable(lazy(() => import('views/dashboard/Default')));
@@ -26,26 +27,33 @@ const CountryRulesPage = Loadable(lazy(() => import('views/country-rules')));
 const WebhookList = Loadable(lazy(() => import('views/webhooks')));
 const AirportList = Loadable(lazy(() => import('views/airports')));
 const NodeCheckList = Loadable(lazy(() => import('views/node-check')));
+const DistributionManagement = Loadable(lazy(() => import('views/distribution')));
 // ==============================|| MAIN ROUTING ||==============================  //
 
 const MainRoutes = {
-  path: '/',
+  path: '/admin',
   element: (
     <AuthGuard>
-      <MainLayout />
+      <RegionRequestProvider>
+        <MainLayout />
+      </RegionRequestProvider>
     </AuthGuard>
   ),
   children: [
     {
-      path: '/',
-      element: <Navigate to="/dashboard/default" replace />
+      index: true,
+      element: <Navigate to="/admin/dashboard/default" replace />
+    },
+    {
+      path: 'distribution',
+      element: <DistributionManagement />
     },
     {
       path: 'dashboard',
       children: [
         {
           index: true,
-          element: <Navigate to="/dashboard/default" replace />
+          element: <Navigate to="/admin/dashboard/default" replace />
         },
         {
           path: 'default',
@@ -96,7 +104,7 @@ const MainRoutes = {
     },
     {
       path: 'settings',
-      element: <Navigate to="/system/settings" replace />
+      element: <Navigate to="/admin/system/settings" replace />
     },
     {
       path: 'system',

@@ -5,7 +5,6 @@ import Drawer from '@mui/material/Drawer';
 import Box from '@mui/material/Box';
 
 // project imports
-import MenuCard from './MenuCard';
 import MenuList from '../MenuList';
 import LogoSection from '../LogoSection';
 import MiniDrawerStyled from './MiniDrawerStyled';
@@ -38,12 +37,6 @@ function Sidebar() {
   );
 
   const drawer = useMemo(() => {
-    const drawerContent = (
-      <>
-        <MenuCard />
-      </>
-    );
-
     let drawerSX = { paddingLeft: '0px', paddingRight: '0px', marginTop: '20px' };
     if (drawerOpen) drawerSX = { paddingLeft: '16px', paddingRight: '16px', marginTop: '0px' };
 
@@ -52,12 +45,10 @@ function Sidebar() {
         {downMD ? (
           <Box sx={drawerSX}>
             <MenuList />
-            {drawerOpen && drawerContent}
           </Box>
         ) : (
           <SimpleBar sx={{ height: 'calc(100vh - 90px)', ...drawerSX }}>
             <MenuList />
-            {drawerOpen && drawerContent}
           </SimpleBar>
         )}
       </>

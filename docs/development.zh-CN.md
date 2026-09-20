@@ -2,6 +2,8 @@
 
 # 开发指南
 
+本 fork 的自定义业务落在 `production`，`main` 跟踪上游。继续使用现有 Vite + Air 开发环境：公开页 `http://localhost:3000/`，分发后台 `http://localhost:3000/admin/distribution`；Vite 同时代理 `/d/` 到后端。先在开发环境验证，再单独构建和部署生产环境。详见[订阅分发](features/distribution.zh-CN.md)。
+
 欢迎参与 SublinkPro 的开发。本指南聚焦于：
 
 - 如何在本地跑通前后端开发环境

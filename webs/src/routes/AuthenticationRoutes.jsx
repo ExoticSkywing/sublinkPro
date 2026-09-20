@@ -15,7 +15,7 @@ const AuthenticationRoutes = {
   element: <MinimalLayout />,
   children: [
     {
-      path: '/login',
+      path: '/admin/login',
       element: (
         <GuestGuard>
           <LoginPage />

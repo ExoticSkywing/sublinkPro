@@ -22,7 +22,7 @@ export default function AuthGuard({ children }) {
 
   // 未登录则跳转到登录页
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/admin/login" state={{ from: location }} replace />;
   }
 
   return children;
