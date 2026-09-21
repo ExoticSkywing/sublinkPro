@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="webs/src/assets/images/logo.svg" width="280px" />
+  <img src="webs/src/assets/images/paraspace-logo-dark.svg" width="280px" alt="ParaSpace" />
   
   **✨ Powerful proxy subscription management and conversion ✨**
 

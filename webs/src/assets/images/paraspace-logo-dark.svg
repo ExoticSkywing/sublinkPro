@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="64" viewBox="0 0 300 64" role="img" aria-label="ParaSpace">
+  <svg x="8" y="11" width="42" height="42" viewBox="0 0 50 50" fill="none">
+    <path d="M9 38 24 12h15L24 38H9Z" stroke="#202126" stroke-width="3"/>
+    <path d="m9 25 8-13h15L17 38" stroke="#202126" stroke-width="3"/>
+  </svg>
+  <text x="66" y="32" dominant-baseline="central" fill="#202126" font-family="Segoe UI, sans-serif" font-size="40" font-weight="600" letter-spacing="-1.4">ParaSpace</text>
+</svg>

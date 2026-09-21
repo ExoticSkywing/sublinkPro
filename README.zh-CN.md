@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="webs/src/assets/images/logo.svg" width="280px" />
+  <img src="webs/src/assets/images/paraspace-logo-dark.svg" width="280px" alt="ParaSpace" />
   
   **✨ 强大的代理订阅管理与转换工具 ✨**
 
