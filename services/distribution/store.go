@@ -34,7 +34,7 @@ const defaultAllowedUA = `(?i)^(?:clashmetaforandroid|clash|mihomo|shadowrocket|
 func New(db *gorm.DB, key string) *Store { return &Store{DB: db, Key: key, Now: time.Now} }
 
 func (s *Store) Migrate() error {
-	if err := s.DB.AutoMigrate(&Settings{}, &Credential{}, &Region{}, &Card{}, &Redemption{}, &Visit{}, &RegionRequest{}); err != nil {
+	if err := s.DB.AutoMigrate(&Settings{}, &Credential{}, &Region{}, &Card{}, &Redemption{}, &Visit{}, &RegionRequest{}, &AccessGrant{}); err != nil {
 		return err
 	}
 	defaults := Settings{ID: 1, TrialDays: 15, FreeDays: 7, CycleDays: 7, RegionLimit: 2, CycleAnchor: time.Now().UTC().Truncate(24 * time.Hour),

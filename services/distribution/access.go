@@ -10,11 +10,13 @@ import (
 )
 
 type Decision struct {
-	Credential Credential
-	Result     string
+	Credential    Credential
+	Result        string
+	Emergency     bool `json:"emergency"`
+	AccessGrantID uint `json:"-"`
 }
 
-func decision(tx *gorm.DB, c Credential, city City, now time.Time) (Decision, error) {
+func decisionWithIP(tx *gorm.DB, c Credential, city City, ip string, now time.Time) (Decision, error) {
 	out := Decision{Credential: c, Result: "allowed"}
 	if c.Status == "revoked" {
 		out.Result = "revoked"
@@ -24,11 +26,37 @@ func decision(tx *gorm.DB, c Credential, city City, now time.Time) (Decision, er
 		out.Result = "inactive"
 		return out, nil
 	}
+	grant, hasGrant, err := accessGrant(tx, c.ID, ip, now)
+	if err != nil {
+		return out, err
+	}
+	if city.Country == "" {
+		if !c.Active(now) {
+			out.Result = "location_unavailable"
+			return out, nil
+		}
+		if hasGrant {
+			out.Emergency = true
+			out.AccessGrantID = grant.ID
+			return out, nil
+		}
+		out.Result = "location_unavailable"
+		return out, nil
+	}
 	if city.Country != "CN" {
 		out.Result = "country_denied"
 		return out, nil
 	}
 	if city.Key == "" || city.Name == "" {
+		if !c.Active(now) {
+			out.Result = "location_unavailable"
+			return out, nil
+		}
+		if hasGrant {
+			out.Emergency = true
+			out.AccessGrantID = grant.ID
+			return out, nil
+		}
 		out.Result = "location_unavailable"
 		return out, nil
 	}
@@ -48,27 +76,43 @@ func decision(tx *gorm.DB, c Credential, city City, now time.Time) (Decision, er
 		return out, err
 	}
 	if !known && len(regions) >= cfg.RegionLimit {
+		if !c.Active(now) {
+			out.Result = "region_denied"
+			return out, nil
+		}
+		if hasGrant {
+			out.Emergency = true
+			out.AccessGrantID = grant.ID
+			return out, nil
+		}
 		out.Result = "region_denied"
-		return out, nil
 	}
 	if !c.Active(now) {
 		out.Result = "expired"
 	}
 	return out, nil
 }
-func (s *Store) Check(ctx context.Context, token string, city City) (Decision, error) {
+
+func decision(tx *gorm.DB, c Credential, city City, now time.Time) (Decision, error) {
+	return decisionWithIP(tx, c, city, "", now)
+}
+func (s *Store) Check(ctx context.Context, token string, city City, ips ...string) (Decision, error) {
 	tx := s.DB.WithContext(ctx)
 	c, err := credentialByToken(tx, token)
 	if err != nil {
 		return Decision{}, err
 	}
-	return decision(tx, c, city, s.Now())
+	ip := ""
+	if len(ips) > 0 {
+		ip = ips[0]
+	}
+	return decisionWithIP(tx, c, city, ip, s.Now())
 }
 
 // CommitDelivery must only be called after a valid nonempty subscription has
 // been rendered. It rechecks permissions to close races with revocation, expiry,
 // simultaneous first activation, resource changes, and changes to the city limit.
-func (s *Store) CommitDelivery(ctx context.Context, token string, city City, subscriptionID int) (Decision, error) {
+func (s *Store) CommitDelivery(ctx context.Context, token string, city City, subscriptionID int, ips ...string) (Decision, error) {
 	var out Decision
 	err := s.transaction(ctx, func(tx *gorm.DB) error {
 		c, err := credentialByToken(tx, token)
@@ -79,7 +123,11 @@ func (s *Store) CommitDelivery(ctx context.Context, token string, city City, sub
 			return Conflict // Discard a response rendered from the previous resource pool.
 		}
 		now := s.Now().UTC()
-		out, err = decision(tx, c, city, now)
+		ip := ""
+		if len(ips) > 0 {
+			ip = ips[0]
+		}
+		out, err = decisionWithIP(tx, c, city, ip, now)
 		if err != nil || out.Result != "allowed" {
 			return err
 		}
@@ -94,7 +142,7 @@ func (s *Store) CommitDelivery(ctx context.Context, token string, city City, sub
 				known = true
 			}
 		}
-		if !known {
+		if !out.Emergency && city.Key != "" && city.Name != "" && !known {
 			row := Region{CredentialID: c.ID, CityKey: city.Key, Province: city.Province, City: city.Name, CreatedAt: now}
 			if err := tx.Create(&row).Error; err != nil {
 				return err
@@ -104,6 +152,11 @@ func (s *Store) CommitDelivery(ctx context.Context, token string, city City, sub
 		c.LastAccessAt = &now
 		c.AccessCount++
 		c.Regions = out.Credential.Regions
+		if out.Emergency {
+			if err := tx.Model(&AccessGrant{}).Where("id = ? AND credential_id = ?", out.AccessGrantID, c.ID).Updates(map[string]any{"last_used_at": now}).Error; err != nil {
+				return err
+			}
+		}
 		if err := tx.Save(&c).Error; err != nil {
 			return err
 		}

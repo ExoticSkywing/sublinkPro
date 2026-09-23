@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
-import { Alert, Box, Button, Checkbox, Divider, FormControlLabel, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Checkbox, Chip, Divider, FormControlLabel, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { distributionAPI } from 'api/distribution';
 import { BusinessDialog, credentialState, dateText, errorText, StatusChip, subscriptionURL } from './Common';
 
@@ -9,6 +9,14 @@ export default function CredentialDialog({ credential, settings, subscriptions, 
   const { t } = useTranslation();
   const [row, setRow] = useState(credential);
   const [visits, setVisits] = useState([]);
+  const [accessGrants, setAccessGrants] = useState([]);
+  const [grantIP, setGrantIP] = useState('');
+  const [grantExpires, setGrantExpires] = useState('');
+  const [grantReason, setGrantReason] = useState('');
+  const [grantBusy, setGrantBusy] = useState(false);
+  const [grantLoading, setGrantLoading] = useState(false);
+  const [grantError, setGrantError] = useState('');
+  const [grantNotice, setGrantNotice] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -20,7 +28,7 @@ export default function CredentialDialog({ credential, settings, subscriptions, 
   const [permanent, setPermanent] = useState(credential.permanent);
   const [expires, setExpires] = useState(credential.expires_at?.slice(0, 16) || '');
   const [rotate, setRotate] = useState(false);
-  const readOnly = busy || row.status === 'revoked';
+  const readOnly = busy || grantBusy || row.status === 'revoked';
   const copyLink = async () => {
     setCopyStatus('');
     try {
@@ -37,7 +45,55 @@ export default function CredentialDialog({ credential, settings, subscriptions, 
       .list('visits', { credential_id: credential.id, size: 20 })
       .then((r) => setVisits(r.data.items))
       .catch((err) => setError(errorText(err, t)));
+    setGrantLoading(true);
+    distributionAPI
+      .listAccessGrants(credential.id)
+      .then((r) => setAccessGrants(r.data?.items || []))
+      .catch((err) => setGrantError(errorText(err, t)))
+      .finally(() => setGrantLoading(false));
   }, [credential.id, t]);
+  const createAccessGrant = async (event) => {
+    event.preventDefault();
+    const ip = grantIP.trim();
+    if (!ip || !grantExpires) {
+      setGrantError(t('distribution.accessGrantValidation'));
+      return;
+    }
+    setGrantBusy(true);
+    setGrantError('');
+    setGrantNotice('');
+    try {
+      await distributionAPI.createAccessGrant(row.id, {
+        ip,
+        expires_at: `${grantExpires}:00Z`,
+        reason: grantReason.trim()
+      });
+      const result = await distributionAPI.listAccessGrants(row.id);
+      setAccessGrants(result.data?.items || []);
+      setGrantIP('');
+      setGrantExpires('');
+      setGrantReason('');
+      setGrantNotice(t('distribution.accessGrantCreated'));
+    } catch (err) {
+      setGrantError(errorText(err, t));
+    } finally {
+      setGrantBusy(false);
+    }
+  };
+  const revokeAccessGrant = async (grantId) => {
+    setGrantBusy(true);
+    setGrantError('');
+    setGrantNotice('');
+    try {
+      await distributionAPI.revokeAccessGrant(row.id, grantId);
+      setAccessGrants((items) => items.map((item) => (item.id === grantId ? { ...item, enabled: false } : item)));
+      setGrantNotice(t('distribution.accessGrantRevoked'));
+    } catch (err) {
+      setGrantError(errorText(err, t));
+    } finally {
+      setGrantBusy(false);
+    }
+  };
   const save = async () => {
     setBusy(true);
     setError('');
@@ -197,6 +253,101 @@ export default function CredentialDialog({ credential, settings, subscriptions, 
         {t('distribution.allowedCities')} ({row.regions?.length || 0}/{settings.region_limit ?? 2})
       </Typography>
       <Typography>{row.regions?.map((r) => `${r.province} · ${r.city}`).join(' / ') || '—'}</Typography>
+      <Stack spacing={1.5}>
+        <Box>
+          <Typography component="h3" variant="h4">
+            {t('distribution.accessGrants')}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {t('distribution.accessGrantsHint')}
+          </Typography>
+        </Box>
+        {grantNotice && <Alert severity="success">{grantNotice}</Alert>}
+        {grantError && <Alert severity="error">{grantError}</Alert>}
+        {grantLoading ? (
+          <Typography color="text.secondary">{t('distribution.loading')}…</Typography>
+        ) : accessGrants.length === 0 ? (
+          <Typography color="text.secondary">{t('distribution.accessGrantEmpty')}</Typography>
+        ) : (
+          <Stack spacing={1}>
+            {accessGrants.map((grant) => (
+              <Box
+                key={grant.id}
+                sx={{ p: 1.5, border: '1px solid', borderColor: 'divider', bgcolor: 'background.default', borderRadius: 1 }}
+              >
+                <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography fontWeight={600}>{grant.ip}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {t('distribution.accessGrantExpires')}: {dateText(grant.expires_at)}
+                    </Typography>
+                    {grant.reason && (
+                      <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+                        {t('distribution.accessGrantReason')}: {grant.reason}
+                      </Typography>
+                    )}
+                    {grant.last_used_at && (
+                      <Typography variant="body2" color="text.secondary">
+                        {t('distribution.accessGrantLastUsed')}: {dateText(grant.last_used_at)}
+                      </Typography>
+                    )}
+                  </Box>
+                  <Stack direction="row" alignItems="center" spacing={1} sx={{ flexShrink: 0 }}>
+                    <Chip
+                      size="small"
+                      color={grant.enabled ? 'warning' : 'default'}
+                      label={t(grant.enabled ? 'distribution.accessGrantActive' : 'distribution.accessGrantRevokedState')}
+                    />
+                    {grant.enabled && (
+                      <Button
+                        size="small"
+                        color="error"
+                        variant="outlined"
+                        onClick={() => revokeAccessGrant(grant.id)}
+                        disabled={grantBusy || readOnly}
+                      >
+                        {t('distribution.accessGrantRevoke')}
+                      </Button>
+                    )}
+                  </Stack>
+                </Stack>
+              </Box>
+            ))}
+          </Stack>
+        )}
+        {row.status !== 'revoked' && (
+          <Stack component="form" onSubmit={createAccessGrant} spacing={1.5}>
+            <TextField
+              label={t('distribution.accessGrantIp')}
+              value={grantIP}
+              onChange={(e) => setGrantIP(e.target.value)}
+              required
+              disabled={grantBusy || readOnly}
+              placeholder="185.200.65.84"
+            />
+            <TextField
+              type="datetime-local"
+              label={`${t('distribution.accessGrantExpires')} (UTC)`}
+              value={grantExpires}
+              onChange={(e) => setGrantExpires(e.target.value)}
+              required
+              disabled={grantBusy || readOnly}
+              slotProps={{ inputLabel: { shrink: true } }}
+              helperText={t('distribution.accessGrantExpiresHint')}
+            />
+            <TextField
+              label={t('distribution.accessGrantReason')}
+              value={grantReason}
+              onChange={(e) => setGrantReason(e.target.value)}
+              disabled={grantBusy || readOnly}
+              slotProps={{ htmlInput: { maxLength: 200 } }}
+            />
+            <Button type="submit" variant="outlined" disabled={grantBusy || readOnly} sx={{ alignSelf: 'flex-start' }}>
+              {t('distribution.accessGrantCreate')}
+            </Button>
+          </Stack>
+        )}
+      </Stack>
       <Divider />
       <Typography component="h3" variant="h4">
         {t('distribution.recentVisits')}

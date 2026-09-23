@@ -158,6 +158,7 @@ func DistributionCredential(c *gin.Context) {
 	out, err := distributionStore().ByID(c.Request.Context(), id)
 	distributionResponse(c, out, err)
 }
+
 func DistributionIssue(c *gin.Context) {
 	var in distribution.IssueInput
 	if !distributionBody(c, &in) {
@@ -306,4 +307,47 @@ func DistributionRedemptions(c *gin.Context) {
 func DistributionVisits(c *gin.Context) {
 	out, err := distributionStore().Visits(c.Request.Context(), distributionFilter(c))
 	distributionResponse(c, out, err)
+}
+
+func distributionGrantID(c *gin.Context) uint {
+	id, err := strconv.ParseUint(c.Param("grantId"), 10, 32)
+	if err != nil || id == 0 {
+		distributionResponse(c, nil, distribution.Invalid)
+		return 0
+	}
+	return uint(id)
+}
+
+func DistributionAccessGrants(c *gin.Context) {
+	id := distributionID(c)
+	if id == 0 {
+		return
+	}
+	out, err := distributionStore().ListAccessGrants(c.Request.Context(), id)
+	distributionResponse(c, gin.H{"items": out, "total": len(out)}, err)
+}
+
+func DistributionCreateAccessGrant(c *gin.Context) {
+	id := distributionID(c)
+	if id == 0 {
+		return
+	}
+	var in distribution.AccessGrantInput
+	if !distributionBody(c, &in) {
+		return
+	}
+	out, err := distributionStore().CreateAccessGrant(c.Request.Context(), id, in)
+	distributionResponse(c, out, err)
+}
+
+func DistributionRevokeAccessGrant(c *gin.Context) {
+	id := distributionID(c)
+	if id == 0 {
+		return
+	}
+	grantID := distributionGrantID(c)
+	if grantID == 0 {
+		return
+	}
+	distributionResponse(c, nil, distributionStore().RevokeAccessGrant(c.Request.Context(), id, grantID))
 }

@@ -7,6 +7,9 @@ export const distributionAPI = {
       ? request.post(`${root}/${resource}/search`, params)
       : request.get(`${root}/${resource}`, { params }),
   getCredential: (id) => request.get(`${root}/credentials/${id}`),
+  listAccessGrants: (id) => request.get(`${root}/credentials/${id}/access-grants`),
+  createAccessGrant: (id, data) => request.post(`${root}/credentials/${id}/access-grants`, data),
+  revokeAccessGrant: (id, grantId) => request.post(`${root}/credentials/${id}/access-grants/${grantId}/revoke`),
   getCard: (id) => request.get(`${root}/cards/${id}`),
   issue: (data) => request.post(`${root}/credentials`, data),
   updateCredential: (id, data) => request.patch(`${root}/credentials/${id}`, data),

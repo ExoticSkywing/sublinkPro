@@ -158,3 +158,24 @@ const (
 	TooFrequent         Problem = "too_frequent"
 	RegionLimitConflict Problem = "region_limit_conflict"
 )
+
+// AccessGrant is a short-lived, administrator-approved exception for a
+// client whose request reaches the service without a usable location. It is
+// deliberately scoped to one credential and one exact public IP.
+type AccessGrant struct {
+	ID           uint       `gorm:"primaryKey" json:"id"`
+	CredentialID uint       `gorm:"index" json:"credential_id"`
+	IP           string     `gorm:"size:64;index" json:"ip"`
+	Reason       string     `gorm:"size:500" json:"reason"`
+	ExpiresAt    time.Time  `json:"expires_at"`
+	Enabled      bool       `json:"enabled"`
+	RevokedAt    *time.Time `json:"revoked_at,omitempty"`
+	LastUsedAt   *time.Time `json:"last_used_at,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+}
+
+func (AccessGrant) TableName() string { return "distribution_access_grants" }
+
+func (g AccessGrant) Active(now time.Time) bool {
+	return g.Enabled && g.RevokedAt == nil && now.Before(g.ExpiresAt)
+}

@@ -312,13 +312,13 @@ func distributionClient(c *gin.Context, store *distribution.Store, locate func(s
 			}
 		}
 	}()
-	decision, err := store.Check(c.Request.Context(), c.Param("token"), city)
+	decision, err := store.Check(c.Request.Context(), c.Param("token"), city, c.ClientIP())
 	if err != nil {
 		distributionNotice(c, cfg, client, "订阅", "无效的订阅链接", false)
 		return
 	}
 	credentialID = decision.Credential.ID
-	if geoErr != nil && decision.Credential.Status == "enabled" {
+	if geoErr != nil && decision.Credential.Status == "enabled" && !decision.Emergency {
 		decision.Result = "location_unavailable"
 	}
 	if decision.Result != "allowed" {
@@ -342,7 +342,7 @@ func distributionClient(c *gin.Context, store *distribution.Store, locate func(s
 		c.String(http.StatusServiceUnavailable, "Subscription generation failed; please retry")
 		return
 	}
-	decision, err = store.CommitDelivery(c.Request.Context(), c.Param("token"), city, decision.Credential.SubscriptionID)
+	decision, err = store.CommitDelivery(c.Request.Context(), c.Param("token"), city, decision.Credential.SubscriptionID, c.ClientIP())
 	if err != nil {
 		c.String(http.StatusServiceUnavailable, "Subscription authorization failed; please retry")
 		return
@@ -369,7 +369,11 @@ func distributionClient(c *gin.Context, store *distribution.Store, locate func(s
 		}
 		c.Header("subscription-userinfo", strings.Trim(usage, "; "))
 	}
-	result = "allowed"
+	if decision.Emergency {
+		result = "emergency_allowed"
+	} else {
+		result = "allowed"
+	}
 	_, _ = c.Writer.Write(body)
 }
 
