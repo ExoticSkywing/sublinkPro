@@ -70,4 +70,30 @@ func TestAccessGrantDoesNotBypassExpiryOrRevocation(t *testing.T) {
 	if _, err := s.CreateAccessGrant(ctx, c.ID, AccessGrantInput{IP: "10.0.0.1", ExpiresAt: now.Add(time.Hour)}); err != Invalid {
 		t.Fatalf("private IP accepted: %v", err)
 	}
+	for _, ip := range []string{"100.64.0.1", "192.0.2.1", "198.18.0.1", "2001:db8::1"} {
+		if _, err := s.CreateAccessGrant(ctx, c.ID, AccessGrantInput{IP: ip, ExpiresAt: now.Add(time.Hour)}); err != Invalid {
+			t.Fatalf("special-use IP %s accepted: %v", ip, err)
+		}
+	}
+}
+
+func TestAccessGrantEmergencyWithoutCityDoesNotReserveRegion(t *testing.T) {
+	s, now := testStore(t)
+	ctx := context.Background()
+	c := issueOne(t, s)
+	grant, err := s.CreateAccessGrant(ctx, c.ID, AccessGrantInput{IP: "8.8.8.8", ExpiresAt: now.Add(time.Hour)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, err := s.CommitDelivery(ctx, c.Token, City{}, c.SubscriptionID, grant.IP)
+	if err != nil || d.Result != "allowed" || !d.Emergency {
+		t.Fatalf("emergency delivery failed: %+v %v", d, err)
+	}
+	var regions []Region
+	if err := s.DB.Where("credential_id = ?", c.ID).Find(&regions).Error; err != nil {
+		t.Fatal(err)
+	}
+	if len(regions) != 0 {
+		t.Fatalf("unresolved city consumed region slot: %+v", regions)
+	}
 }

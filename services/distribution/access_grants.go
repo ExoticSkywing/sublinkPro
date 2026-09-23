@@ -23,6 +23,28 @@ func normalizeGrantIP(value string) (string, error) {
 	if ip == nil || !ip.IsGlobalUnicast() || ip.IsPrivate() || ip.IsLoopback() || ip.IsUnspecified() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
 		return "", Invalid
 	}
+	// IsGlobalUnicast intentionally includes several special-use ranges. An
+	// emergency grant must be tied to a routable public address, never a CGNAT,
+	// documentation, or benchmarking address that can be shared by many clients.
+	if ip4 := ip.To4(); ip4 != nil {
+		for _, cidr := range []string{
+			"0.0.0.0/8", "100.64.0.0/10", "192.0.0.0/24", "192.0.2.0/24",
+			"198.18.0.0/15", "198.51.100.0/24", "203.0.113.0/24",
+		} {
+			_, network, _ := net.ParseCIDR(cidr)
+			if network.Contains(ip4) {
+				return "", Invalid
+			}
+		}
+		ip = net.IPv4(ip4[0], ip4[1], ip4[2], ip4[3])
+	} else {
+		for _, cidr := range []string{"2001:2::/48", "2001:db8::/32", "3fff::/20"} {
+			_, network, _ := net.ParseCIDR(cidr)
+			if network.Contains(ip) {
+				return "", Invalid
+			}
+		}
+	}
 	return ip.String(), nil
 }
 
