@@ -22,7 +22,7 @@ SublinkPro supports several configuration methods. Priority from highest to lowe
 
 Fork-specific distribution settings are managed at `/admin/distribution`, not in `config.yaml`: trial 15 days, free benefit 7 days, cycle 7 days, UTC cycle anchor, subscription domain, portal URL, allowed-UA regexp, optional fallback subscription and expiry message. Day values accept 1–365. See [distribution](features/distribution.md) for defaults, key backup and trusted-proxy requirements. The existing API encryption key also encrypts issued links and cards; keep it stable.
 
-The default UA regexp includes `ClashMetaForAndroid/…`. Startup upgrades only saved values matching the complete legacy default, preserving custom regexps and all other distribution settings.
+The default UA regexp includes `FlClash/…`, `Bettbox/…`, and `ClashMetaForAndroid/…`. Startup upgrades only saved values matching the complete legacy default, preserving custom regexps and all other distribution settings.
 
 Distribution `region_limit` is stored in the business settings database, not YAML or environment variables. In **Distribution settings**, choose 1 or 2 cities per subscription (default: 2); use 1 temporarily for testing. Saving takes effect immediately for fetches and approvals. Existing bindings are never deleted: a lower limit that conflicts with any undeleted subscription is rejected. Upgrades and API writes omitting the field preserve a previously saved limit. This is a city limit, not a device-count limit.
 

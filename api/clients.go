@@ -131,11 +131,79 @@ func GetClient(c *gin.Context) {
 		_, _ = c.Writer.WriteString("Not Found")
 		return
 	}
+
+	ua := c.GetHeader("User-Agent")
+	if strings.HasPrefix(strings.ToLower(ua), "mozilla/") &&
+		c.Query("client") == "" && c.Query("clash") == "" && c.Query("flag") == "" && c.Query("target") == "" {
+		c.Redirect(http.StatusFound, "/")
+		return
+	}
+
 	clientType := resolveSubscriptionClient(c)
 	prepared, ok := prepareClientResponse(c, clientType, strings.ToLower(token))
 	if !ok {
 		return
 	}
+	setResolvedSubscriptionName(c, prepared.SubName)
+	if testGetClientAfterResolveSubscriptionNameHook != nil {
+		testGetClientAfterResolveSubscriptionNameHook(c)
+	}
+	c.Set("shareID", prepared.ShareID)
+	dispatchPreparedClientResponse(c, prepared)
+}
+
+// GetLegacyParaspaceClient 处理旧服务订阅路径: /paraspace/*action (兼容 /paraspace/:group/:token 等任意层级)
+func GetLegacyParaspaceClient(c *gin.Context) {
+	action := strings.Trim(c.Param("action"), "/")
+	var token string
+	if action != "" {
+		parts := strings.Split(action, "/")
+		token = parts[len(parts)-1]
+	}
+	if token == "" {
+		token = c.Query("token")
+	}
+	if token == "" {
+		utils.Warn("老系统兼容订阅: token为空")
+		_, _ = c.Writer.WriteString("Not Found")
+		return
+	}
+
+	ua := c.GetHeader("User-Agent")
+	if strings.HasPrefix(strings.ToLower(ua), "mozilla/") &&
+		c.Query("client") == "" && c.Query("clash") == "" && c.Query("flag") == "" && c.Query("target") == "" {
+		c.Redirect(http.StatusFound, "/")
+		return
+	}
+
+	clientType := resolveSubscriptionClient(c)
+	// 兼容老客户端常见参数 (如 ?clash=1, ?flag=clash, ?target=clash)
+	if c.Query("clash") != "" || strings.EqualFold(c.Query("flag"), "clash") || strings.EqualFold(c.Query("target"), "clash") {
+		clientType = "clash"
+	}
+
+	// 禁用 CDN/浏览器缓存，防止多客户端拉取或节点变动时读取到错误缓存
+	c.Header("Cache-Control", "no-store, no-cache, must-revalidate")
+	c.Header("Pragma", "no-cache")
+
+	tokenLower := strings.ToLower(token)
+	prepared, ok := prepareClientResponse(c, clientType, tokenLower)
+	if !ok {
+		// 关键容灾兜底：针对老系统公开过渡 Token (ck17dk3zy13x7rkn)，即便数据库记录不存在也兜底映射到 elexfree (ID: 1)
+		if strings.EqualFold(token, "ck17dk3zy13x7rkn") {
+			var fallbackSub models.Subcription
+			fallbackSub.ID = 1
+			if err := fallbackSub.Find(); err == nil {
+				if p, okSub := buildPreparedResponseFromSubscription(fallbackSub, clientType, 0); okSub {
+					setResolvedSubscriptionName(c, p.SubName)
+					dispatchPreparedClientResponse(c, p)
+					return
+				}
+			}
+		}
+		return
+	}
+
 	setResolvedSubscriptionName(c, prepared.SubName)
 	if testGetClientAfterResolveSubscriptionNameHook != nil {
 		testGetClientAfterResolveSubscriptionNameHook(c)
@@ -206,10 +274,14 @@ func resolveSubscriptionClient(c *gin.Context) string {
 	if userAgent == "" {
 		fmt.Println("User-Agent为空")
 	}
-	for _, client := range []string{"clash", "surge"} {
-		if strings.Contains(strings.ToLower(userAgent), strings.ToLower(client)) {
-			return client
+	lowerUA := strings.ToLower(userAgent)
+	for _, client := range []string{"clash", "mihomo", "flclash", "bettbox"} {
+		if strings.Contains(lowerUA, client) {
+			return "clash"
 		}
+	}
+	if strings.Contains(lowerUA, "surge") {
+		return "surge"
 	}
 
 	return "v2ray"
@@ -447,10 +519,14 @@ func resolveClashDialerProxy(node models.Node, finalNodeName string, chainNodeDi
 func prepareRendererResponse(c *gin.Context, prepared preparedClientResponse) (resolvedPreparedResponse, bool) {
 	resolved := applyPreparedResponseMode(prepared)
 	sub := resolved.Subscription
-	if sub.RefreshUsageOnRequest {
+	if prepared.Mode == clientResponseSyntheticFallback {
+		c.Writer.Header().Set("subscription-userinfo", getSubscriptionUsage(sub.Nodes))
+	} else if sub.RefreshUsageOnRequest {
 		node.RefreshUsageForSubscriptionNodes(sub.Nodes)
+		c.Writer.Header().Set("subscription-userinfo", getSubscriptionUsage(sub.Nodes))
+	} else {
+		c.Writer.Header().Del("subscription-userinfo")
 	}
-	c.Writer.Header().Set("subscription-userinfo", getSubscriptionUsage(sub.Nodes))
 	if prepared.ClientType == "clash" {
 		c.Writer.Header().Set("profile-update-interval", strconv.Itoa(resolveSubscriptionUpdateIntervalHours(sub.UpdateInterval)))
 		c.Writer.Header().Set("profile-title", url.QueryEscape(resolved.SubName))

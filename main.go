@@ -672,7 +672,7 @@ func Run() {
 
 		// 订阅请求（/c/）由路由处理，这里不应该到达
 		// 如果到达这里说明订阅链接无效
-		if strings.HasPrefix(path, "/c/") || strings.HasPrefix(path, "/d/") {
+		if strings.HasPrefix(path, "/c/") || strings.HasPrefix(path, "/d/") || strings.HasPrefix(path, "/paraspace/") {
 			c.JSON(404, gin.H{"error": "Subscription not found"})
 			return
 		}

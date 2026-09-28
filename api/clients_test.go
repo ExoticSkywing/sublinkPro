@@ -1491,3 +1491,65 @@ func TestGetClientConcurrentSurgeRequestsKeepSubscriptionScoped(t *testing.T) {
 		t.Fatalf("expected two hook invocations, got %d", callCount)
 	}
 }
+
+func TestGetLegacyParaspaceClient(t *testing.T) {
+	setupClientsAPITestDB(t)
+	clashTemplatePath := writeTestClashTemplate(t)
+	surgeTemplatePath := writeTestSurgeTemplate(t)
+	createClientSubscriptionFixture(t, clashTemplatePath, surgeTemplatePath, "elexfree", "ck17dk3zy13x7rkn", "Legacy Test Node")
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.GET("/paraspace/*action", GetLegacyParaspaceClient)
+
+	// 1. 测试 /paraspace/elextest/ck17dk3zy13x7rkn 搭配 Clash UA
+	req1 := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/paraspace/elextest/ck17dk3zy13x7rkn", nil)
+	req1.Header.Set("User-Agent", "clash-verge/v2.5.2")
+	w1 := httptest.NewRecorder()
+	r.ServeHTTP(w1, req1)
+
+	if w1.Code != http.StatusOK {
+		t.Fatalf("expected 200 for legacy clash request, got %d", w1.Code)
+	}
+	if !strings.Contains(w1.Body.String(), "Legacy Test Node") {
+		t.Fatalf("expected body to contain Legacy Test Node, got %s", w1.Body.String())
+	}
+	if w1.Header().Get("Cache-Control") != "no-store, no-cache, must-revalidate" {
+		t.Fatalf("expected anti-cache header, got %s", w1.Header().Get("Cache-Control"))
+	}
+
+	// 2. 测试带 ?clash=1 query 参数
+	req2 := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/paraspace/elextest/ck17dk3zy13x7rkn?clash=1", nil)
+	w2 := httptest.NewRecorder()
+	r.ServeHTTP(w2, req2)
+	if w2.Code != http.StatusOK || !strings.Contains(w2.Body.String(), "Legacy Test Node") {
+		t.Fatalf("expected 200 for clash query param, got %d", w2.Code)
+	}
+
+	// 3. 测试 /paraspace/ck17dk3zy13x7rkn (两段路径)
+	req3 := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/paraspace/ck17dk3zy13x7rkn", nil)
+	req3.Header.Set("User-Agent", "clash-verge/v2.5.2")
+	w3 := httptest.NewRecorder()
+	r.ServeHTTP(w3, req3)
+	if w3.Code != http.StatusOK || !strings.Contains(w3.Body.String(), "Legacy Test Node") {
+		t.Fatalf("expected 200 for two-part path, got %d", w3.Code)
+	}
+	// 4. 测试浏览器访问重定向到首页
+	req4 := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/paraspace/elextest/ck17dk3zy13x7rkn", nil)
+	req4.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+	w4 := httptest.NewRecorder()
+	r.ServeHTTP(w4, req4)
+	if w4.Code != http.StatusFound || w4.Header().Get("Location") != "/" {
+		t.Fatalf("expected 302 redirect to / for browser request, got %d loc=%q", w4.Code, w4.Header().Get("Location"))
+	}
+
+	// 5. 测试浏览器访问但带 ?clash=1 参数时正常返回配置而不是重定向
+	req5 := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/paraspace/elextest/ck17dk3zy13x7rkn?clash=1", nil)
+	req5.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+	w5 := httptest.NewRecorder()
+	r.ServeHTTP(w5, req5)
+	if w5.Code != http.StatusOK || !strings.Contains(w5.Body.String(), "Legacy Test Node") {
+		t.Fatalf("expected 200 with config when browser requests with clash=1, got %d", w5.Code)
+	}
+
+}

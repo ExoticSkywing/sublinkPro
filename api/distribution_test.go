@@ -298,6 +298,25 @@ func TestDistributionClashMetaAndroidAutodetectionAndRestrictions(t *testing.T) 
 	}
 }
 
+func TestDistributionBettboxAndFlClashAutodetection(t *testing.T) {
+	s, cred := distributionFixture(t)
+	city := geoip.CityLocation{Key: "CN:1", Country: "CN", Province: "湖北", City: "武汉"}
+	for _, ua := range []string{
+		"FlClash/ClashMetaForAndroid/2.11.33.Bettbox",
+		"FlClash/0.8.76",
+		"Bettbox/1.0.0",
+	} {
+		response := pullDistribution(s, cred.Token, "GET", ua, "", city)
+		if response.Code != http.StatusOK {
+			t.Fatalf("unexpected response code for %q: %d", ua, response.Code)
+		}
+		nodes := distributionTestNodes(t, response, "clash")
+		if len(nodes) == 0 || !strings.Contains(response.Body.String(), "example.com") {
+			t.Fatalf("expected Clash YAML output for %q", ua)
+		}
+	}
+}
+
 func TestDistributionSkipsLocationForNonDeliveries(t *testing.T) {
 	s, cred := distributionFixture(t)
 	r := gin.New()

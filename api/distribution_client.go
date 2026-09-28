@@ -73,7 +73,7 @@ func distributionClientType(c *gin.Context) string {
 		return normalizeDistributionClient(resolveSubscriptionClient(c))
 	}
 	ua := strings.ToLower(c.GetHeader("User-Agent"))
-	for _, name := range []string{"shadowrocket", "loon", "stash", "quantumult", "surge", "mihomo", "clash", "sing-box"} {
+	for _, name := range []string{"shadowrocket", "loon", "stash", "quantumult", "surge", "mihomo", "clash", "flclash", "bettbox", "sing-box"} {
 		if strings.HasPrefix(ua, name) {
 			switch name {
 			case "shadowrocket", "loon":
@@ -82,6 +82,8 @@ func distributionClientType(c *gin.Context) string {
 				return "v2ray"
 			case "quantumult":
 				return "quanx"
+			case "flclash", "bettbox":
+				return "clash"
 			default:
 				return name
 			}
@@ -91,7 +93,7 @@ func distributionClientType(c *gin.Context) string {
 }
 func normalizeDistributionClient(client string) string {
 	switch strings.ToLower(strings.TrimSpace(client)) {
-	case "clashmeta", "clash-meta":
+	case "clashmeta", "clash-meta", "flclash", "bettbox":
 		return "mihomo"
 	case "singbox":
 		return "sing-box"

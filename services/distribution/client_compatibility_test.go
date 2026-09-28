@@ -65,7 +65,7 @@ func TestClashMetaAndroidMigrationPreservesCustomSettings(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if tc.original == legacyDefaultAllowedUA {
+			if tc.original == legacyDefaultAllowedUA || tc.original == previousDefaultAllowedUA {
 				want.AllowedUA = defaultAllowedUA
 			}
 			for i := 0; i < 2; i++ {

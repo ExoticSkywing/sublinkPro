@@ -29,7 +29,8 @@ type Store struct {
 }
 
 const legacyDefaultAllowedUA = `(?i)^(?:clash|mihomo|shadowrocket|loon|surge|stash|quantumult|sing-box|v2rayng|v2rayn|hiddify|nekobox)(?:[ /\d._-]|$)`
-const defaultAllowedUA = `(?i)^(?:clashmetaforandroid|clash|mihomo|shadowrocket|loon|surge|stash|quantumult|sing-box|v2rayng|v2rayn|hiddify|nekobox)(?:[ /\d._-]|$)`
+const previousDefaultAllowedUA = `(?i)^(?:clashmetaforandroid|clash|mihomo|shadowrocket|loon|surge|stash|quantumult|sing-box|v2rayng|v2rayn|hiddify|nekobox)(?:[ /\d._-]|$)`
+const defaultAllowedUA = `(?i)^(?:flclash|bettbox|clashmetaforandroid|clash|mihomo|shadowrocket|loon|surge|stash|quantumult|sing-box|v2rayng|v2rayn|hiddify|nekobox)(?:[ /\d._-]|$)`
 
 func New(db *gorm.DB, key string) *Store { return &Store{DB: db, Key: key, Now: time.Now} }
 
@@ -45,7 +46,7 @@ func (s *Store) Migrate() error {
 	}
 	// Upgrade only the shipped default. Never broaden an administrator's custom
 	// allowlist or replace any other saved business settings.
-	return s.DB.Model(&Settings{}).Where("id = ? AND allowed_ua = ?", 1, legacyDefaultAllowedUA).
+	return s.DB.Model(&Settings{}).Where("id = ? AND allowed_ua IN (?, ?)", 1, legacyDefaultAllowedUA, previousDefaultAllowedUA).
 		UpdateColumn("allowed_ua", defaultAllowedUA).Error
 }
 

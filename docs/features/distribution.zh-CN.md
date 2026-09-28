@@ -36,7 +36,7 @@
 
 只有白名单客户端发起有效 GET、生成非空可用配置并通过最终授权检查后，才登记激活与城市。浏览器访问跳转公开页；HEAD、非白名单 UA、非中国大陆 IP、无法定位城市、空资源及转换失败均不会激活。
 
-默认 UA 白名单包含 Clash Meta for Android 的 `ClashMetaForAndroid/…`，可直接导入原链接，自动返回 Clash YAML。升级时仅给仍使用旧版完整默认规则的实例补上此标识；管理员自定义正则保持不变，需要时在「分发设置」自行加入此明确标识。它不会绕过 IP、地区、有效期或链接状态检查。若客户端把 `Unsupported subscription client` 报成 YAML 解析错误，先检查访问记录是否为 `ua_denied`，不要直接放开所有 UA。
+默认 UA 白名单包含 `FlClash/…`、`Bettbox/…` 与 Clash Meta for Android 的 `ClashMetaForAndroid/…`，可直接导入原链接，自动返回 Clash YAML。升级时仅给仍使用旧版完整默认规则的实例补上此标识；管理员自定义正则保持不变，需要时在「分发设置」自行加入此明确标识。它不会绕过 IP、地区、有效期或链接状态检查。若客户端把 `Unsupported subscription client` 报成 YAML 解析错误，先检查访问记录是否为 `ua_denied`，不要直接放开所有 UA。
 
 默认首次试用 15 天，可设 1–365 天。首次有效拉取登记第一个城市；默认上限为 2 时，第二个有效城市自动登记；超出所设上限的城市只收到不可用提示节点。停用、销毁、境外与无法识别城市同样不返回真实节点。
 
