@@ -12,7 +12,6 @@ import Box from '@mui/material/Box';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import MainContentStyled from './MainContentStyled';
-import StarGuideDialog from 'ui-component/StarGuideDialog';
 import GeoIPWarningDialog from 'ui-component/GeoIPWarningDialog';
 import TaskProgressFab from 'components/TaskProgressFab';
 
@@ -48,8 +47,6 @@ export default function MainLayout() {
 
   return (
     <Box sx={{ display: 'flex' }}>
-      {/* Star 引导弹窗 */}
-      <StarGuideDialog />
 
       {/* GeoIP 缺失提示 */}
       <GeoIPWarningDialog />
