@@ -15,6 +15,8 @@ type SubLogs struct {
 	Count         int
 	SubcriptionID int
 	ShareID       int // 关联的分享ID，用于区分不同分享入口
+	UA            string
+	Client        string
 }
 
 // subLogsCache 使用新的泛型缓存

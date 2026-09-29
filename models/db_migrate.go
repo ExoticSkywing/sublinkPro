@@ -376,6 +376,23 @@ func RunMigrations() error {
 		utils.Error("执行迁移 0038_add_airport_node_filter_summary 失败: %v", err)
 	}
 
+	// 0039_add_sub_logs_ua_and_client - 为访问日志增加 UA 与解析后的客户端字段
+	if err := database.RunCustomMigration("0039_add_sub_logs_ua_and_client", func() error {
+		if !db.Migrator().HasColumn(&SubLogs{}, "ua") {
+			if err := db.Migrator().AddColumn(&SubLogs{}, "ua"); err != nil {
+				return err
+			}
+		}
+		if !db.Migrator().HasColumn(&SubLogs{}, "client") {
+			if err := db.Migrator().AddColumn(&SubLogs{}, "client"); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		utils.Error("执行迁移 0039_add_sub_logs_ua_and_client 失败: %v", err)
+	}
+
 	if err := database.RunCustomMigration("0024_migrate_legacy_webhook_settings", func() error {
 		legacyURL, _ := GetSetting("webhook_url")
 		legacyMethod, _ := GetSetting("webhook_method")

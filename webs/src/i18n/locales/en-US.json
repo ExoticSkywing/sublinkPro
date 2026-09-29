@@ -2452,7 +2452,7 @@
       "unknownSource": "Unknown source",
       "search": {
         "label": "Search access logs",
-        "placeholder": "Search IP or source region",
+        "placeholder": "Search IP, client or source region",
         "clear": "Clear search",
         "empty": "No matching access logs"
       },
@@ -2467,10 +2467,13 @@
           "ip": "IP address",
           "region": "Source region",
           "count": "Visits",
-          "date": "Last visit"
+          "date": "Last visit",
+          "client": "Client"
         }
       },
-      "empty": "No access logs yet"
+      "empty": "No access logs yet",
+      "client": "Client",
+      "unknownClient": "Unknown"
     },
     "conditions": {
       "title": "Condition Configuration",

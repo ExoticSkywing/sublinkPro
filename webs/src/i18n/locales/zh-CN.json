@@ -2450,7 +2450,7 @@
       "unknownSource": "未知来源",
       "search": {
         "label": "搜索访问记录",
-        "placeholder": "搜索 IP 或来源地区",
+        "placeholder": "搜索 IP、客户端或来源地区",
         "clear": "清除搜索",
         "empty": "没有找到匹配的访问记录"
       },
@@ -2465,10 +2465,13 @@
           "ip": "IP 地址",
           "region": "来源地区",
           "count": "访问次数",
-          "date": "访问时间"
+          "date": "访问时间",
+          "client": "客户端"
         }
       },
-      "empty": "暂无访问记录"
+      "empty": "暂无访问记录",
+      "client": "客户端",
+      "unknownClient": "未知"
     },
     "conditions": {
       "title": "条件配置",

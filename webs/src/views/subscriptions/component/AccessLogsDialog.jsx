@@ -1,3 +1,4 @@
+import Tooltip from '@mui/material/Tooltip';
 import { useMemo, useState } from 'react';
 import { useTheme } from '@mui/material/styles';
 import { useTranslation } from 'react-i18next';
@@ -35,12 +36,14 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import TouchAppIcon from '@mui/icons-material/TouchApp';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
+import DevicesIcon from '@mui/icons-material/Devices';
 import useResolvedColorScheme from 'hooks/useResolvedColorScheme';
 import { getReadableTextTokens, getSurfaceTokens } from 'themes/surfaceTokens';
 import { withAlpha } from 'utils/colorUtils';
 
 const SORT_FIELDS = {
   ip: 'ip',
+  client: 'client',
   region: 'region',
   count: 'count',
   date: 'date'
@@ -123,6 +126,7 @@ export default function AccessLogsDialog({ open, logs, onClose, loading = false,
   const sortOptions = useMemo(
     () => [
       { value: SORT_FIELDS.ip, label: t('subscriptions.accessLogs.sort.fields.ip') },
+      { value: SORT_FIELDS.client, label: t('subscriptions.accessLogs.sort.fields.client') },
       { value: SORT_FIELDS.region, label: t('subscriptions.accessLogs.sort.fields.region') },
       { value: SORT_FIELDS.count, label: t('subscriptions.accessLogs.sort.fields.count') },
       { value: SORT_FIELDS.date, label: t('subscriptions.accessLogs.sort.fields.date') }
@@ -136,9 +140,10 @@ export default function AccessLogsDialog({ open, logs, onClose, loading = false,
 
     return logs.filter((log) => {
       const ip = String(log.IP || '').toLowerCase();
+      const client = String(log.Client || log.UA || '').toLowerCase();
       const region = String(log.Addr || unknownSourceLabel).toLowerCase();
 
-      return ip.includes(keyword) || region.includes(keyword);
+      return ip.includes(keyword) || client.includes(keyword) || region.includes(keyword);
     });
   }, [logs, searchKeyword, unknownSourceLabel]);
 
@@ -148,6 +153,10 @@ export default function AccessLogsDialog({ open, logs, onClose, loading = false,
 
       if (sortField === SORT_FIELDS.ip) {
         comparison = compareIpValues(leftLog.IP, rightLog.IP);
+      } else if (sortField === SORT_FIELDS.client) {
+        const leftClient = String(leftLog.Client || leftLog.UA || '');
+        const rightClient = String(rightLog.Client || rightLog.UA || '');
+        comparison = leftClient.localeCompare(rightClient, undefined, { numeric: true, sensitivity: 'base' });
       } else if (sortField === SORT_FIELDS.region) {
         const leftRegion = String(leftLog.Addr || unknownSourceLabel);
         const rightRegion = String(rightLog.Addr || unknownSourceLabel);
@@ -389,6 +398,30 @@ export default function AccessLogsDialog({ open, logs, onClose, loading = false,
     </Stack>
   );
 
+  const renderClientBlock = (client, ua) => {
+    const displayClient = client || (ua ? (ua.length > 20 ? ua.slice(0, 20) + '...' : ua) : t('subscriptions.accessLogs.unknownClient', { defaultValue: '未知' }));
+    return (
+      <Tooltip title={ua || displayClient} placement="top" arrow>
+        <Chip
+          size="small"
+          icon={<DevicesIcon sx={{ fontSize: '13px !important' }} />}
+          label={displayClient}
+          sx={{
+            height: 24,
+            fontSize: '0.75rem',
+            fontWeight: 500,
+            bgcolor: withAlpha(palette.primary.main, isDark ? 0.16 : 0.08),
+            color: palette.primary.main,
+            border: '1px solid',
+            borderColor: withAlpha(palette.primary.main, isDark ? 0.3 : 0.18),
+            maxWidth: 160,
+            '& .MuiChip-label': { px: 0.75, overflow: 'hidden', textOverflow: 'ellipsis' }
+          }}
+        />
+      </Tooltip>
+    );
+  };
+
   const renderIpBlock = (ip) => (
     <Box
       sx={{
@@ -453,6 +486,11 @@ export default function AccessLogsDialog({ open, logs, onClose, loading = false,
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <DevicesIcon sx={{ fontSize: 16, color: tertiaryText, flexShrink: 0 }} />
+            {renderClientBlock(log.Client, log.UA)}
+          </Box>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <LocationOnIcon sx={{ fontSize: 16, color: tertiaryText, flexShrink: 0 }} />
             <Typography
               variant="body2"
@@ -503,6 +541,11 @@ export default function AccessLogsDialog({ open, logs, onClose, loading = false,
               minWidth: 140,
               color: secondaryText
             })}
+            {renderSortableHeader(SORT_FIELDS.client, t('subscriptions.accessLogs.client'), {
+              fontWeight: 600,
+              minWidth: 130,
+              color: secondaryText
+            })}
             {renderSortableHeader(SORT_FIELDS.region, t('subscriptions.accessLogs.region'), {
               fontWeight: 600,
               minWidth: 120,
@@ -534,6 +577,7 @@ export default function AccessLogsDialog({ open, logs, onClose, loading = false,
               }}
             >
               <TableCell>{renderIpBlock(log.IP)}</TableCell>
+              <TableCell>{renderClientBlock(log.Client, log.UA)}</TableCell>
               <TableCell>
                 <Typography variant="body2" sx={{ color: secondaryText }}>
                   {log.Addr || unknownSourceLabel}

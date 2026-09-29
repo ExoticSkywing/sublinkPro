@@ -16,6 +16,8 @@ func GetIp(c *gin.Context) {
 		shareIDVal, _ := c.Get("shareID")
 
 		ip := c.ClientIP()
+		ua := c.GetHeader("User-Agent")
+		clientName := utils.ParseClientFromUA(ua)
 
 		// Get location from local GeoIP database
 		addr, err := geoip.GetLocation(ip)
@@ -51,6 +53,8 @@ func GetIp(c *gin.Context) {
 			iplog.SubcriptionID = sub.ID
 			iplog.ShareID = shareID
 			iplog.Date = time.Now().Format("2006-01-02 15:04:05")
+			iplog.UA = ua
+			iplog.Client = clientName
 			iplog.Count = 1
 			err = iplog.Add()
 			if err != nil {
@@ -62,6 +66,10 @@ func GetIp(c *gin.Context) {
 			iplog.Count++
 			iplog.Addr = addr
 			iplog.Date = time.Now().Format("2006-01-02 15:04:05")
+			if ua != "" {
+				iplog.UA = ua
+				iplog.Client = clientName
+			}
 			err = iplog.Update()
 			if err != nil {
 				utils.Error("更新IP日志失败: %s", err.Error())
