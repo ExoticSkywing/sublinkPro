@@ -10,7 +10,7 @@ func TestParseClientFromUA(t *testing.T) {
 		want string
 	}{
 		{"clash-verge/v2.5.2", "Clash Verge"},
-		{"ClashMetaForAndroid/2.11.25.Meta", "Clash Meta (Android)"},
+		{"ClashMetaForAndroid/2.11.25.Meta", "CMFA"},
 		{"FlClash/ClashMetaForAndroid/2.11.33.Bettbox", "Bettbox"},
 		{"FlClash/v0.8.98", "FlClash"},
 		{"Shadowrocket/3445 CFNetwork/1402.0.8", "Shadowrocket"},
