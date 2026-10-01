@@ -7,6 +7,7 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import Popover from '@mui/material/Popover';
 import Button from '@mui/material/Button';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -137,6 +138,9 @@ export default function AccessLogsDialog({ open, logs, onClose, loading = false,
   const [sortField, setSortField] = useState(SORT_FIELDS.date);
   const [sortOrder, setSortOrder] = useState(SORT_ORDERS.desc);
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [regionAnchorEl, setRegionAnchorEl] = useState(null);
+  const [regionFilterQuery, setRegionFilterQuery] = useState('');
+  const isRegionPopoverOpen = Boolean(regionAnchorEl);
   const { isDark } = useResolvedColorScheme();
   const { palette, dialogSurface, dialogSurfaceGradient, mutedPanelSurface, nestedPanelSurface, panelBorder } = getSurfaceTokens(
     theme,
@@ -367,18 +371,24 @@ export default function AccessLogsDialog({ open, logs, onClose, loading = false,
     });
 
     const regionEntries = Object.entries(regionMap).sort((a, b) => b[1] - a[1]);
-    const regionNames = regionEntries.map(([name, count]) => `${name} (${count})`);
+    const regionItems = regionEntries.map(([name, count]) => ({ name, count }));
 
     return {
       domesticTotal,
       regionCount: regionEntries.length,
-      regionList: regionNames,
+      regionItems,
       telecomCount,
       mobileCount,
       unicomCount,
       otherCount
     };
   }, [logs]);
+
+  const filteredRegionItems = useMemo(() => {
+    const q = regionFilterQuery.trim().toLowerCase();
+    if (!q) return domesticStats.regionItems;
+    return domesticStats.regionItems.filter((item) => item.name.toLowerCase().includes(q));
+  }, [domesticStats.regionItems, regionFilterQuery]);
 
   const renderStatCard = ({ key, icon, label, value, tooltip, color, textColor, active, onClick }) => {
     const cardContent = (
@@ -451,11 +461,6 @@ export default function AccessLogsDialog({ open, logs, onClose, loading = false,
   const renderStatsSummary = () => {
     if (!logs || logs.length === 0) return null;
 
-    const regionsTooltipText =
-      domesticStats.regionList.length <= 16
-        ? domesticStats.regionList.join('、')
-        : `${domesticStats.regionList.slice(0, 16).join('、')} 等共 ${domesticStats.regionCount} 个地区`;
-
     const isDomesticFiltered = searchKeyword.trim() === '中国';
     const isTelecomFiltered = searchKeyword.trim() === '电信';
     const isMobileFiltered = searchKeyword.trim() === '移动';
@@ -468,13 +473,12 @@ export default function AccessLogsDialog({ open, logs, onClose, loading = false,
         label: t('subscriptions.accessLogs.stats.domesticRegions'),
         value: t('subscriptions.accessLogs.stats.regionCount', { count: domesticStats.regionCount }),
         tooltip: t('subscriptions.accessLogs.stats.regionsTooltip', {
-          count: domesticStats.regionCount,
-          regions: regionsTooltipText
+          count: domesticStats.regionCount
         }),
         color: palette.primary.main,
         textColor: palette.primary.main,
-        active: isDomesticFiltered,
-        onClick: () => setSearchKeyword((prev) => (prev.trim() === '中国' ? '' : '中国'))
+        active: isDomesticFiltered || Boolean(regionAnchorEl),
+        onClick: (event) => setRegionAnchorEl(event.currentTarget)
       },
       {
         key: 'telecom',
@@ -592,6 +596,186 @@ export default function AccessLogsDialog({ open, logs, onClose, loading = false,
         >
           {statItems.map(renderStatCard)}
         </Box>
+
+        <Popover
+          open={isRegionPopoverOpen}
+          anchorEl={regionAnchorEl}
+          onClose={() => {
+            setRegionAnchorEl(null);
+            setRegionFilterQuery('');
+          }}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'left'
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'left'
+          }}
+          slotProps={{
+            paper: {
+              sx: {
+                mt: 1,
+                p: 2,
+                width: { xs: 'calc(100vw - 32px)', sm: 460 },
+                maxWidth: 520,
+                borderRadius: 2.5,
+                bgcolor: dialogSurface,
+                backgroundImage: dialogSurfaceGradient,
+                border: '1px solid',
+                borderColor: panelBorder,
+                boxShadow: isDark ? `0 14px 34px ${withAlpha(theme.palette.common.black, 0.45)}` : '0 10px 28px rgba(0,0,0,0.12)'
+              }
+            }
+          }}
+        >
+          <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Stack direction="row" alignItems="center" spacing={0.75}>
+              <MapIcon sx={{ fontSize: 18, color: palette.primary.main }} />
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, color: primaryText, fontSize: '0.875rem' }}>
+                {t('subscriptions.accessLogs.stats.regionsPopoverTitle')}
+              </Typography>
+              <Chip
+                size="small"
+                label={`${domesticStats.regionCount} 地区 · ${domesticStats.domesticTotal} IP`}
+                sx={{
+                  height: 20,
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  bgcolor: withAlpha(palette.primary.main, isDark ? 0.18 : 0.08),
+                  color: palette.primary.main,
+                  border: '1px solid',
+                  borderColor: withAlpha(palette.primary.main, isDark ? 0.32 : 0.16)
+                }}
+              />
+            </Stack>
+            <IconButton
+              size="small"
+              onClick={() => {
+                setRegionAnchorEl(null);
+                setRegionFilterQuery('');
+              }}
+            >
+              <ClearIcon fontSize="small" />
+            </IconButton>
+          </Box>
+
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+            <TextField
+              fullWidth
+              size="small"
+              value={regionFilterQuery}
+              onChange={(e) => setRegionFilterQuery(e.target.value)}
+              placeholder={t('subscriptions.accessLogs.stats.searchRegionPlaceholder')}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" sx={{ color: tertiaryText }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: regionFilterQuery ? (
+                    <InputAdornment position="end">
+                      <IconButton size="small" edge="end" onClick={() => setRegionFilterQuery('')}>
+                        <ClearIcon fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : null,
+                  sx: {
+                    height: 32,
+                    fontSize: '0.8rem',
+                    bgcolor: sortControlSurface,
+                    borderRadius: 1.5,
+                    '& fieldset': { borderColor: rowBorder }
+                  }
+                }
+              }}
+            />
+            <Chip
+              size="small"
+              label={`${t('subscriptions.accessLogs.stats.allDomestic')} (${domesticStats.domesticTotal})`}
+              onClick={() => {
+                setSearchKeyword('中国');
+                setRegionAnchorEl(null);
+                setRegionFilterQuery('');
+              }}
+              variant={searchKeyword.trim() === '中国' ? 'filled' : 'outlined'}
+              color="primary"
+              sx={{ height: 30, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
+            />
+          </Stack>
+
+          <Box
+            sx={{
+              maxHeight: 260,
+              overflowY: 'auto',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 0.85,
+              p: 0.25,
+              pr: 0.5,
+              '&::-webkit-scrollbar': { width: 5 },
+              '&::-webkit-scrollbar-thumb': {
+                bgcolor: withAlpha(palette.divider, 0.6),
+                borderRadius: 2
+              }
+            }}
+          >
+            {filteredRegionItems.length === 0 ? (
+              <Typography variant="body2" sx={{ color: secondaryText, py: 2, width: '100%', textAlign: 'center' }}>
+                未找到匹配的地区
+              </Typography>
+            ) : (
+              filteredRegionItems.map(({ name, count }) => {
+                const isSelected = searchKeyword.trim() === name;
+                return (
+                  <Chip
+                    key={name}
+                    size="small"
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+                        <span style={{ fontWeight: isSelected ? 600 : 500 }}>{name}</span>
+                        <Box
+                          component="span"
+                          sx={{
+                            px: 0.6,
+                            py: 0.1,
+                            borderRadius: 1,
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            bgcolor: isSelected
+                              ? withAlpha(theme.palette.common.white, 0.28)
+                              : withAlpha(palette.primary.main, isDark ? 0.25 : 0.12),
+                            color: isSelected ? 'inherit' : palette.primary.main
+                          }}
+                        >
+                          {count}
+                        </Box>
+                      </Box>
+                    }
+                    onClick={() => {
+                      setSearchKeyword(isSelected ? '' : name);
+                      setRegionAnchorEl(null);
+                      setRegionFilterQuery('');
+                    }}
+                    variant={isSelected ? 'filled' : 'outlined'}
+                    color={isSelected ? 'primary' : 'default'}
+                    sx={{
+                      height: 28,
+                      cursor: 'pointer',
+                      borderRadius: 1.5,
+                      borderColor: isSelected ? palette.primary.main : rowBorder,
+                      '&:hover': {
+                        borderColor: palette.primary.main,
+                        bgcolor: withAlpha(palette.primary.main, isDark ? 0.18 : 0.08)
+                      }
+                    }}
+                  />
+                );
+              })
+            )}
+          </Box>
+        </Popover>
       </Box>
     );
   };
