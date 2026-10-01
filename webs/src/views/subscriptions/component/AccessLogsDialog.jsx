@@ -37,6 +37,12 @@ import TouchAppIcon from '@mui/icons-material/TouchApp';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import DevicesIcon from '@mui/icons-material/Devices';
+import PublicIcon from '@mui/icons-material/Public';
+import MapIcon from '@mui/icons-material/Map';
+import CellTowerIcon from '@mui/icons-material/CellTower';
+import SignalCellularAltIcon from '@mui/icons-material/SignalCellularAlt';
+import HubIcon from '@mui/icons-material/Hub';
+import RouterIcon from '@mui/icons-material/Router';
 import useResolvedColorScheme from 'hooks/useResolvedColorScheme';
 import { getReadableTextTokens, getSurfaceTokens } from 'themes/surfaceTokens';
 import { withAlpha } from 'utils/colorUtils';
@@ -96,6 +102,32 @@ const normalizeCount = (value) => Number(value) || 0;
 const normalizeDate = (value) => {
   const timestamp = Date.parse(String(value || ''));
   return Number.isNaN(timestamp) ? 0 : timestamp;
+};
+
+const parseDomesticInfo = (addr) => {
+  if (!addr) return null;
+  const raw = String(addr).trim();
+  if (!raw || raw.includes('内网') || raw.includes('私有地址')) return null;
+  if (/香港|澳门|台湾|HK|MO|TW/i.test(raw)) return null;
+  if (!/中国|🇨🇳/i.test(raw) && !/(?:^|[\s([/])CN/i.test(raw)) return null;
+
+  let region = raw.replace(/^[\s🇨🇳CNcn中国]+/i, '').trim();
+  region = region.replace(/[\(（][^\)）]+[\)）]\s*$/, '').trim();
+
+  let isp = 'other';
+  if (/电信|telecom/i.test(raw)) {
+    isp = 'telecom';
+  } else if (/移动|mobile/i.test(raw)) {
+    isp = 'mobile';
+  } else if (/联通|unicom/i.test(raw)) {
+    isp = 'unicom';
+  }
+
+  return {
+    region: region || '其他',
+    isp,
+    raw
+  };
 };
 
 export default function AccessLogsDialog({ open, logs, onClose, loading = false, title }) {
@@ -298,6 +330,272 @@ export default function AccessLogsDialog({ open, logs, onClose, loading = false,
     </TableCell>
   );
 
+  const telecomColor = '#1890ff';
+  const mobileColor = '#10b981';
+  const unicomColor = '#fa8c16';
+  const otherIspColor = '#8c8c8c';
+
+  const telecomTextColor = isDark ? '#69c0ff' : '#096dd9';
+  const mobileTextColor = isDark ? '#4ade80' : '#059669';
+  const unicomTextColor = isDark ? '#ffc069' : '#d46b08';
+  const otherIspTextColor = isDark ? '#bfbfbf' : '#595959';
+
+  const domesticStats = useMemo(() => {
+    let domesticTotal = 0;
+    const regionMap = {};
+    let telecomCount = 0;
+    let mobileCount = 0;
+    let unicomCount = 0;
+    let otherCount = 0;
+
+    (logs || []).forEach((log) => {
+      const info = parseDomesticInfo(log.Addr);
+      if (!info) return;
+
+      domesticTotal += 1;
+      regionMap[info.region] = (regionMap[info.region] || 0) + 1;
+
+      if (info.isp === 'telecom') {
+        telecomCount += 1;
+      } else if (info.isp === 'mobile') {
+        mobileCount += 1;
+      } else if (info.isp === 'unicom') {
+        unicomCount += 1;
+      } else {
+        otherCount += 1;
+      }
+    });
+
+    const regionEntries = Object.entries(regionMap).sort((a, b) => b[1] - a[1]);
+    const regionNames = regionEntries.map(([name, count]) => `${name} (${count})`);
+
+    return {
+      domesticTotal,
+      regionCount: regionEntries.length,
+      regionList: regionNames,
+      telecomCount,
+      mobileCount,
+      unicomCount,
+      otherCount
+    };
+  }, [logs]);
+
+  const renderStatCard = ({ key, icon, label, value, tooltip, color, textColor, active, onClick }) => {
+    const cardContent = (
+      <Box
+        onClick={onClick}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          px: 1.25,
+          py: 0.85,
+          borderRadius: 2,
+          bgcolor: active ? withAlpha(color, isDark ? 0.28 : 0.16) : withAlpha(color, isDark ? 0.12 : 0.05),
+          border: '1px solid',
+          borderColor: active ? color : withAlpha(color, isDark ? 0.32 : 0.18),
+          boxShadow: active ? `0 0 0 1px ${color}` : 'none',
+          cursor: onClick ? 'pointer' : 'default',
+          userSelect: 'none',
+          transition: 'all 0.18s ease',
+          '&:hover': onClick
+            ? {
+                bgcolor: withAlpha(color, isDark ? 0.22 : 0.12),
+                borderColor: color
+              }
+            : {}
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
+          <Box sx={{ color, display: 'flex', alignItems: 'center', flexShrink: 0 }}>{icon}</Box>
+          <Typography
+            variant="body2"
+            sx={{
+              fontSize: '0.8rem',
+              color: secondaryText,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}
+          >
+            {label}
+          </Typography>
+        </Box>
+        <Typography
+          variant="subtitle2"
+          sx={{
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            color: textColor || color,
+            ml: 0.75,
+            whiteSpace: 'nowrap',
+            flexShrink: 0
+          }}
+        >
+          {value}
+        </Typography>
+      </Box>
+    );
+
+    return tooltip ? (
+      <Tooltip key={key} title={tooltip} placement="top" arrow>
+        <Box sx={key === 'other' ? { gridColumn: { xs: 'span 2', sm: 'auto' } } : undefined}>{cardContent}</Box>
+      </Tooltip>
+    ) : (
+      <Box key={key} sx={key === 'other' ? { gridColumn: { xs: 'span 2', sm: 'auto' } } : undefined}>
+        {cardContent}
+      </Box>
+    );
+  };
+
+  const renderStatsSummary = () => {
+    if (!logs || logs.length === 0) return null;
+
+    const regionsTooltipText =
+      domesticStats.regionList.length <= 16
+        ? domesticStats.regionList.join('、')
+        : `${domesticStats.regionList.slice(0, 16).join('、')} 等共 ${domesticStats.regionCount} 个地区`;
+
+    const isDomesticFiltered = searchKeyword.trim() === '中国';
+    const isTelecomFiltered = searchKeyword.trim() === '电信';
+    const isMobileFiltered = searchKeyword.trim() === '移动';
+    const isUnicomFiltered = searchKeyword.trim() === '联通';
+
+    const statItems = [
+      {
+        key: 'region',
+        icon: <MapIcon sx={{ fontSize: 17 }} />,
+        label: t('subscriptions.accessLogs.stats.domesticRegions'),
+        value: t('subscriptions.accessLogs.stats.regionCount', { count: domesticStats.regionCount }),
+        tooltip: t('subscriptions.accessLogs.stats.regionsTooltip', {
+          count: domesticStats.regionCount,
+          regions: regionsTooltipText
+        }),
+        color: palette.primary.main,
+        textColor: palette.primary.main,
+        active: isDomesticFiltered,
+        onClick: () => setSearchKeyword((prev) => (prev.trim() === '中国' ? '' : '中国'))
+      },
+      {
+        key: 'telecom',
+        icon: <CellTowerIcon sx={{ fontSize: 17 }} />,
+        label: t('subscriptions.accessLogs.stats.telecom'),
+        value: t('subscriptions.accessLogs.stats.itemCount', { count: domesticStats.telecomCount }),
+        tooltip: t('subscriptions.accessLogs.stats.filterTooltip', {
+          name: t('subscriptions.accessLogs.stats.telecom'),
+          count: domesticStats.telecomCount
+        }),
+        color: telecomColor,
+        textColor: telecomTextColor,
+        active: isTelecomFiltered,
+        onClick: () => setSearchKeyword((prev) => (prev.trim() === '电信' ? '' : '电信'))
+      },
+      {
+        key: 'mobile',
+        icon: <SignalCellularAltIcon sx={{ fontSize: 17 }} />,
+        label: t('subscriptions.accessLogs.stats.mobile'),
+        value: t('subscriptions.accessLogs.stats.itemCount', { count: domesticStats.mobileCount }),
+        tooltip: t('subscriptions.accessLogs.stats.filterTooltip', {
+          name: t('subscriptions.accessLogs.stats.mobile'),
+          count: domesticStats.mobileCount
+        }),
+        color: mobileColor,
+        textColor: mobileTextColor,
+        active: isMobileFiltered,
+        onClick: () => setSearchKeyword((prev) => (prev.trim() === '移动' ? '' : '移动'))
+      },
+      {
+        key: 'unicom',
+        icon: <HubIcon sx={{ fontSize: 17 }} />,
+        label: t('subscriptions.accessLogs.stats.unicom'),
+        value: t('subscriptions.accessLogs.stats.itemCount', { count: domesticStats.unicomCount }),
+        tooltip: t('subscriptions.accessLogs.stats.filterTooltip', {
+          name: t('subscriptions.accessLogs.stats.unicom'),
+          count: domesticStats.unicomCount
+        }),
+        color: unicomColor,
+        textColor: unicomTextColor,
+        active: isUnicomFiltered,
+        onClick: () => setSearchKeyword((prev) => (prev.trim() === '联通' ? '' : '联通'))
+      }
+    ];
+
+    if (domesticStats.otherCount > 0) {
+      statItems.push({
+        key: 'other',
+        icon: <RouterIcon sx={{ fontSize: 17 }} />,
+        label: t('subscriptions.accessLogs.stats.otherIsp'),
+        value: t('subscriptions.accessLogs.stats.itemCount', { count: domesticStats.otherCount }),
+        color: otherIspColor,
+        textColor: otherIspTextColor,
+        active: false,
+        onClick: undefined
+      });
+    }
+
+    return (
+      <Box
+        sx={{
+          mb: 1.5,
+          p: { xs: 1.25, sm: 1.5 },
+          borderRadius: 2.5,
+          bgcolor: nestedPanelSurface,
+          border: '1px solid',
+          borderColor: rowBorder
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.25 }}>
+          <Stack direction="row" alignItems="center" spacing={0.75}>
+            <PublicIcon sx={{ fontSize: 16, color: palette.primary.main }} />
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: primaryText, fontSize: '0.85rem' }}>
+              {t('subscriptions.accessLogs.stats.title')}
+            </Typography>
+            <Chip
+              size="small"
+              label={t('subscriptions.accessLogs.stats.domesticTotal', { count: domesticStats.domesticTotal })}
+              sx={{
+                height: 20,
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                bgcolor: withAlpha(palette.primary.main, isDark ? 0.18 : 0.08),
+                color: palette.primary.main,
+                border: '1px solid',
+                borderColor: withAlpha(palette.primary.main, isDark ? 0.32 : 0.16)
+              }}
+            />
+          </Stack>
+          {hasSearchKeyword && (
+            <Typography
+              variant="caption"
+              onClick={() => setSearchKeyword('')}
+              sx={{
+                color: palette.primary.main,
+                fontWeight: 500,
+                cursor: 'pointer',
+                userSelect: 'none',
+                '&:hover': { textDecoration: 'underline' }
+              }}
+            >
+              {t('subscriptions.accessLogs.stats.clearFilter')}
+            </Typography>
+          )}
+        </Box>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: 'repeat(2, 1fr)',
+              sm: `repeat(${statItems.length}, 1fr)`
+            },
+            gap: 1
+          }}
+        >
+          {statItems.map(renderStatCard)}
+        </Box>
+      </Box>
+    );
+  };
+
   const renderSearchField = () => (
     <TextField
       fullWidth
@@ -399,7 +697,9 @@ export default function AccessLogsDialog({ open, logs, onClose, loading = false,
   );
 
   const renderClientBlock = (client, ua) => {
-    const displayClient = client || (ua ? (ua.length > 20 ? ua.slice(0, 20) + '...' : ua) : t('subscriptions.accessLogs.unknownClient', { defaultValue: '未知' }));
+    const displayClient =
+      client ||
+      (ua ? (ua.length > 20 ? `${ua.slice(0, 20)}...` : ua) : t('subscriptions.accessLogs.unknownClient', { defaultValue: '未知' }));
     return (
       <Tooltip title={ua || displayClient} placement="top" arrow>
         <Chip
@@ -665,12 +965,14 @@ export default function AccessLogsDialog({ open, logs, onClose, loading = false,
           </Box>
         ) : isMobile ? (
           <Box>
+            {renderStatsSummary()}
             {renderSearchField()}
             <MobileSortControls />
             {sortedLogs.length > 0 ? sortedLogs.map((log) => <MobileLogCard key={log.ID} log={log} />) : <FilteredEmptyState />}
           </Box>
         ) : (
           <Box>
+            {renderStatsSummary()}
             {renderSearchField()}
             {sortedLogs.length > 0 ? <DesktopTable /> : <FilteredEmptyState />}
           </Box>

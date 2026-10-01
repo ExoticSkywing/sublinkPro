@@ -2473,7 +2473,21 @@
       },
       "empty": "No access logs yet",
       "client": "Client",
-      "unknownClient": "Unknown"
+      "unknownClient": "Unknown",
+      "stats": {
+        "title": "Domestic Access Statistics",
+        "domesticTotal": "{{count}} domestic records",
+        "domesticRegions": "Regions",
+        "regionCount": "{{count}} regions",
+        "regionsTooltip": "Covered {{count}} domestic regions (click to filter): {{regions}}",
+        "telecom": "China Telecom",
+        "mobile": "China Mobile",
+        "unicom": "China Unicom",
+        "otherIsp": "Other ISPs",
+        "filterTooltip": "Click to quickly filter {{name}} (total {{count}} records)",
+        "clearFilter": "Reset filter",
+        "itemCount": "{{count}}"
+      }
     },
     "conditions": {
       "title": "Condition Configuration",

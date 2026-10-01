@@ -2471,7 +2471,21 @@
       },
       "empty": "暂无访问记录",
       "client": "客户端",
-      "unknownClient": "未知"
+      "unknownClient": "未知",
+      "stats": {
+        "title": "国内访问统计",
+        "domesticTotal": "{{count}} 条国内记录",
+        "domesticRegions": "覆盖地区",
+        "regionCount": "{{count}} 个地区",
+        "regionsTooltip": "国内已覆盖 {{count}} 个地区（点击快速筛选）：{{regions}}",
+        "telecom": "中国电信",
+        "mobile": "中国移动",
+        "unicom": "中国联通",
+        "otherIsp": "其他网络",
+        "filterTooltip": "点击快速筛选{{name}}记录（共 {{count}} 条）",
+        "clearFilter": "重置筛选",
+        "itemCount": "{{count}} 条"
+      }
     },
     "conditions": {
       "title": "条件配置",
